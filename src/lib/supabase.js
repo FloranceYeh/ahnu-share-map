@@ -92,6 +92,50 @@ export async function loadPendingPlaces() {
   return data || []
 }
 
+export async function loadPlacesByStatus(status) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data, error } = await supabase.from('places').select('*').eq('status', status).order('submitted_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function updatePlace(id, changes) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data, error } = await supabase.from('places').update(changes).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deletePlace(id) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { error } = await supabase.from('places').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function loadAdminCatalog() {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const [categories, fields] = await Promise.all([
+    supabase.from('categories').select('*').order('sort_order'),
+    supabase.from('detail_fields').select('*').order('sort_order'),
+  ])
+  if (categories.error || fields.error) throw categories.error || fields.error
+  return { categories: categories.data || [], fields: fields.data || [] }
+}
+
+export async function saveCategory(category) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data, error } = await supabase.from('categories').upsert(category).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function saveDetailField(field) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data, error } = await supabase.from('detail_fields').upsert(field).select().single()
+  if (error) throw error
+  return data
+}
+
 export async function loadPendingImageUrls(paths = []) {
   if (!supabase || !paths.length) return []
   const { data, error } = await supabase.storage.from('submission-images').createSignedUrls(paths, 3600)

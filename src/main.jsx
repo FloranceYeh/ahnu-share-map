@@ -205,9 +205,10 @@ function App() {
   const [catalogCategories, setCatalogCategories] = useState(categoryConfig)
   const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig)
   const [dataStatus, setDataStatus] = useState('static')
-  useEffect(() => {
+  const refreshCatalog = useCallback(async () => {
     if (!supabaseConfigured) return
-    loadDynamicCatalog().then((catalog) => {
+    try {
+      const catalog = await loadDynamicCatalog()
       const nextCategories = (catalog.categories || []).map((category) => ({ id: category.id, label: category.label, color: category.color }))
       const nextFields = (catalog.detailFields || []).map((field) => ({ key: field.key, label: field.label, default: field.default_value || '' }))
       const nextCategoryById = Object.fromEntries(nextCategories.map((category) => [category.id, category]))
@@ -218,8 +219,9 @@ function App() {
         return { ...mapped, coordinates: toAmapCoordinates(mapped.coordinates) }
       }))
       setDataStatus('dynamic')
-    }).catch(() => setDataStatus('error'))
+    } catch { setDataStatus('error') }
   }, [])
+  useEffect(() => { refreshCatalog() }, [refreshCatalog])
   const categoriesForUi = useMemo(() => [{ id: 'all', label: appConfig.allCategoryLabel }, ...catalogCategories], [catalogCategories])
   const filtered = useMemo(() => catalogPlaces.filter((place) => {
     const matchesCategory = activeCategory === 'all' || place.category === activeCategory
@@ -254,7 +256,7 @@ function App() {
     {debugEnabled && !draft && <div className="debug-hint">点击地图放置新的推荐点</div>}
     {draft && (supabaseConfigured ? <SubmissionForm draft={draft} setDraft={setDraft} categories={categoriesForUi} detailFields={catalogDetailFields} onClose={() => setDraft(null)} /> : <DebugForm draft={draft} setDraft={setDraft} onClose={() => setDraft(null)} />)}
     {statusPanel && <SubmissionStatus onClose={() => setStatusPanel(false)} />}
-    {adminPanel && <AdminPanel onClose={() => { setAdminPanel(false); setAdminPreviewPlaces([]); setAdminFocus(null) }} onPendingChange={handlePendingChange} onPreviewPlace={handlePreviewPlace} />}
+    {adminPanel && <AdminPanel onClose={() => { setAdminPanel(false); setAdminPreviewPlaces([]); setAdminFocus(null) }} onPendingChange={handlePendingChange} onPreviewPlace={handlePreviewPlace} onDataChanged={refreshCatalog} />}
     {drawer && <aside className="recommendation-drawer"><div className="drawer-handle" /><div className="drawer-heading"><div><p className="section-kicker">APPROVED PLACES</p><h2>附近值得去</h2></div><button className="drawer-close" onClick={() => setDrawer(false)} aria-label="关闭推荐">×</button></div><div className="drawer-filters"><span>{filtered.length} 个地点</span><span>管理员审核通过</span></div><div className="place-list">{filtered.map((place) => <article key={place.id} role="button" tabIndex="0" className={`place-card ${selected?.id === place.id ? 'selected' : ''} ${place.cover ? '' : 'no-image'}`} onClick={() => selectPlace(place)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectPlace(place) }}>{place.cover && <div className="place-image" style={{ backgroundImage: `url(${place.cover})` }}><span className="place-category" style={{ background: place.color }}>{place.categoryLabel}</span>{place.rating !== appConfig.defaultRating && <span className="rating">★ {place.rating}</span>}</div>}<div className="place-body"><div className="place-title"><h3>{place.name}</h3><span className="arrow">↗</span></div><p className="place-address">{place.address}</p><div className="tag-row">{place.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p className="quote">“{place.recommendation}”</p></div></article>)}</div></aside>}
     {selected && <div className={`detail-drawer ${selected.cover ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selected.cover && <div className="drawer-image" style={{ backgroundImage: `url(${selected.cover})` }} />}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: selected.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
   </main>
