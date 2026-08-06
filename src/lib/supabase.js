@@ -44,7 +44,16 @@ export async function submitPlace(payload, turnstileToken) {
   let fingerprint = localStorage.getItem('submission-fingerprint')
   if (!fingerprint) { fingerprint = crypto.randomUUID(); localStorage.setItem('submission-fingerprint', fingerprint) }
   const { data, error } = await supabase.functions.invoke('submit-place', { body: { payload, turnstileToken, fingerprint } })
-  if (error) throw error
+  if (error) {
+    let message = error.message
+    try {
+      const responseBody = await error.context?.json()
+      message = responseBody?.error || message
+    } catch {
+      // Keep the SDK message when the function response is not JSON.
+    }
+    throw new Error(message)
+  }
   if (data?.error) throw new Error(data.error)
   return data.queryCode
 }
