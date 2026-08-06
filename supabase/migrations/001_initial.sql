@@ -72,8 +72,12 @@ create policy "admin manages categories" on public.categories for all to authent
 create policy "admin manages detail fields" on public.detail_fields for all to authenticated using (exists (select 1 from public.admin_users a where a.user_id = auth.uid())) with check (exists (select 1 from public.admin_users a where a.user_id = auth.uid()));
 create policy "admin manages places" on public.places for all to authenticated using (exists (select 1 from public.admin_users a where a.user_id = auth.uid())) with check (exists (select 1 from public.admin_users a where a.user_id = auth.uid()));
 
-insert into storage.buckets (id, name, public) values ('submission-images', 'submission-images', false) on conflict (id) do nothing;
-insert into storage.buckets (id, name, public) values ('place-images', 'place-images', true) on conflict (id) do nothing;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('submission-images', 'submission-images', false, 5242880, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('place-images', 'place-images', true, 5242880, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 create policy "anonymous uploads submission images" on storage.objects for insert to anon with check (bucket_id = 'submission-images');
 create policy "admin reads submission images" on storage.objects for select to authenticated using (bucket_id = 'submission-images' and exists (select 1 from public.admin_users a where a.user_id = auth.uid()));
 create policy "admin manages public place images" on storage.objects for all to authenticated using (bucket_id in ('submission-images', 'place-images') and exists (select 1 from public.admin_users a where a.user_id = auth.uid())) with check (bucket_id in ('submission-images', 'place-images') and exists (select 1 from public.admin_users a where a.user_id = auth.uid()));

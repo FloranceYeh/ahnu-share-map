@@ -13,11 +13,13 @@ npm run dev
 
 1. 在 Supabase 项目中执行 `supabase/migrations/001_initial.sql` 和 `002_seed_catalog.sql`。
 2. 部署 Edge Function：`supabase functions deploy submit-place`。
-3. 配置 Function secrets：
+3. 配置 Turnstile Function secret：
 
 ```bash
-supabase secrets set TURNSTILE_SECRET_KEY=... SUPABASE_SERVICE_ROLE_KEY=...
+supabase secrets set TURNSTILE_SECRET_KEY=...
 ```
+
+`SUPABASE_URL` 和 `SUPABASE_SERVICE_ROLE_KEY` 由 Supabase Edge Functions 运行环境自动提供，不应放入 Vercel 的前端环境变量。
 
 4. 在 Supabase Authentication 创建管理员邮箱密码账号，然后执行：
 
