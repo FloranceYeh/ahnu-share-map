@@ -39,11 +39,11 @@ export function mapDynamicPlace(row, categoriesById, detailFields) {
   }
 }
 
-export async function submitPlace(payload, turnstileToken) {
+export async function submitPlace(payload, turnstileToken, submissionId = null) {
   if (!supabase) throw new Error('Supabase 未配置')
   let fingerprint = localStorage.getItem('submission-fingerprint')
   if (!fingerprint) { fingerprint = crypto.randomUUID(); localStorage.setItem('submission-fingerprint', fingerprint) }
-  const { data, error } = await supabase.functions.invoke('submit-place', { body: { payload, turnstileToken, fingerprint } })
+  const { data, error } = await supabase.functions.invoke('submit-place', { body: { payload, turnstileToken, fingerprint, submissionId } })
   if (error) {
     let message = error.message
     try {
@@ -68,7 +68,7 @@ export async function submitPlaceWithImages(payload, files = [], turnstileToken)
     if (error) throw error
     imagePaths.push(path)
   }
-  return submitPlace({ ...payload, id: submissionId, custom_details: { ...(payload.custom_details || {}), images: imagePaths } }, turnstileToken)
+  return submitPlace({ ...payload, custom_details: { ...(payload.custom_details || {}), images: imagePaths } }, turnstileToken, submissionId)
 }
 
 export async function getSubmissionStatus(queryCode) {
