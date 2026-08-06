@@ -1,0 +1,10 @@
+# 推荐详情字段的显示顺序、标题和默认文案。
+- key: hours
+  label: 营业时间
+  default: 营业时间以店面为准
+- key: price
+  label: 人均消费
+  default: 价格以店面为准
+- key: bestFor
+  label: 适合
+  default: 随时去逛

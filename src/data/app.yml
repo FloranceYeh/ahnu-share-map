@@ -1,0 +1,18 @@
+# 地图与地点默认配置，管理员可以直接调整。
+- mapCenter: [118.3697, 31.3378]
+  mapZoom: 18
+  mapMinZoom: 14
+  mapMaxZoom: 19
+  mapStyle: amap://styles/normal
+  coordinateSystem: wgs84
+  enableDebugAddPoint: true
+  coordinateStep: [0.0008, 0.0007]
+  placeIdPrefix: place
+  allCategoryLabel: 全部
+  defaultCategory: food
+  defaultCategoryColor: '#5e8c73'
+  defaultAddress: 赭山校区周边
+  defaultRating: —
+  defaultTip: 出发前建议确认营业状态。
+  defaultTags: []
+  defaultHighlights: []

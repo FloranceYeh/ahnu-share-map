@@ -1,0 +1,5 @@
+- name: '滨江公园'
+  recommendation: '吹江风真的很舒服！'
+  category: fun
+  coordinates: [31.336928, 118.351633]
+  bestFor: '休闲放松'

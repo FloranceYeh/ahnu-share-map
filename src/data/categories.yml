@@ -1,0 +1,17 @@
+# 管理员维护文件：新增推荐类型只需增加一项。
+- id: food
+  label: 吃喝
+  color: '#ec7356'
+- id: fun
+  label: 娱乐
+  color: '#63a47d'
+- id: study
+  label: 学习
+  color: '#5c9bd1'
+- id: shop
+  label: 购物
+  color: '#9b7cc4'
+- id: exercise
+  label: 运动
+  color: '#f4b35e'
+
