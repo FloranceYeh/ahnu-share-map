@@ -127,6 +127,7 @@ button { cursor:pointer; }
 .tip-line { font-size:11px; }
 .highlight-list span { font-size:8px; }
 .pending-edit { width:100%; height:34px; margin-bottom:7px; padding:0 8px; color:#2d4838; background:#fffdf8; border:1px solid #d7ded5; border-radius:3px; font-size:14px; font-weight:600; }
+.pending-images { display:flex; gap:6px; margin-bottom:9px; overflow-x:auto; }.pending-images img { width:72px; height:58px; flex:0 0 auto; object-fit:cover; border-radius:3px; border:1px solid #d7ded5; }
 .duplicate-warning { padding:7px 8px; color:#8d5b31 !important; background:#fff2da; border:1px solid #e9cca0; border-radius:3px; font-size:10px !important; }
 .debug-trigger { font-size:11px; }
 .debug-form label { font-size:10px; }

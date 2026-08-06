@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import yamlText from './data/places.yml?raw'
 import categoryYamlText from './data/categories.yml?raw'
 import appYamlText from './data/app.yml?raw'
 import detailYamlText from './data/details.yml?raw'
@@ -89,23 +88,7 @@ const categoryConfig = parseYaml(categoryYamlText).filter((item) => item.id && i
 const categoryById = Object.fromEntries(categoryConfig.map((category) => [category.id, category]))
 const categories = [{ id: 'all', label: appConfig.allCategoryLabel }, ...categoryConfig]
 
-const staticPlaces = parseYaml(yamlText).filter((item) => item.name && item.recommendation).map((item, index) => ({
-  id: item.id || `${appConfig.placeIdPrefix}-${index + 1}`,
-  name: item.name,
-  recommendation: item.recommendation,
-  category: categoryById[item.category] ? item.category : appConfig.defaultCategory,
-  categoryLabel: categoryById[item.category]?.label || categoryById[appConfig.defaultCategory]?.label,
-  color: categoryById[item.category]?.color || appConfig.defaultCategoryColor,
-  // Admin data uses [lat, lng]; AMap uses [lng, lat].
-  coordinates: Array.isArray(item.coordinates) && item.coordinates.length === 2 ? toAmapCoordinates([item.coordinates[1], item.coordinates[0]]) : [CENTER[0] + index * appConfig.coordinateStep[0], CENTER[1] + index * appConfig.coordinateStep[1]],
-  address: item.address || appConfig.defaultAddress,
-  rating: item.rating || appConfig.defaultRating,
-  cover: item.cover || '',
-  tags: Array.isArray(item.tags) ? item.tags : appConfig.defaultTags,
-  highlights: Array.isArray(item.highlights) ? item.highlights : appConfig.defaultHighlights,
-  tip: item.tip || appConfig.defaultTip,
-  details: detailConfig.map((field) => ({ key: field.key, label: field.label, value: item[field.key] || field.default })),
-}))
+const staticPlaces = []
 
 function loadAmap(key) {
   if (window.AMap) return Promise.resolve(window.AMap)
@@ -126,7 +109,7 @@ function loadAmap(key) {
   })
 }
 
-function AmapCanvas({ places: visiblePlaces, selected, onSelect, onStatus, onMapClick, debugEnabled, resetSignal }) {
+function AmapCanvas({ places: visiblePlaces, previewPlaces = [], selected, onSelect, onStatus, onMapClick, debugEnabled, resetSignal, focusPlace }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const mapClickRef = useRef(onMapClick)
@@ -151,18 +134,22 @@ function AmapCanvas({ places: visiblePlaces, selected, onSelect, onStatus, onMap
     const map = mapRef.current
     if (!map || !window.AMap) return
     map.clearMap()
-    visiblePlaces.forEach((place) => {
-      const color = place.color || appConfig.defaultCategoryColor
+    ;[...visiblePlaces, ...previewPlaces].forEach((place) => {
+      const color = place.pending ? '#b36f43' : place.color || appConfig.defaultCategoryColor
       const marker = new window.AMap.Marker({ position: place.coordinates, content: `<span class="dot-marker ${selected?.id === place.id ? 'is-active' : ''}" style="--dot-color:${color}"></span>`, offset: new window.AMap.Pixel(-9, -9), zIndex: selected?.id === place.id ? 120 : 100, title: place.name })
-      marker.on('click', () => onSelect(place))
+      marker.on('click', () => place.pending ? map.setZoomAndCenter(appConfig.mapZoom, place.coordinates) : onSelect(place))
       map.add(marker)
     })
     if (selected) map.setCenter(selected.coordinates)
-  }, [visiblePlaces, selected, onSelect])
+  }, [visiblePlaces, previewPlaces, selected, onSelect])
 
   useEffect(() => {
     if (resetSignal > 0 && mapRef.current) mapRef.current.setZoomAndCenter(appConfig.mapZoom, CENTER)
   }, [resetSignal])
+
+  useEffect(() => {
+    if (focusPlace?.coordinates && mapRef.current) mapRef.current.setZoomAndCenter(appConfig.mapZoom, focusPlace.coordinates)
+  }, [focusPlace])
 
   return <div ref={containerRef} className={`amap-canvas ${debugEnabled ? 'is-debugging' : ''}`} />
 }
@@ -210,6 +197,10 @@ function App() {
   const [resetSignal, setResetSignal] = useState(0)
   const [statusPanel, setStatusPanel] = useState(false)
   const [adminPanel, setAdminPanel] = useState(false)
+  const [adminPreviewPlaces, setAdminPreviewPlaces] = useState([])
+  const [adminFocus, setAdminFocus] = useState(null)
+  const handlePendingChange = useCallback((items) => setAdminPreviewPlaces(items.map((item) => ({ id: item.id, name: item.name, pending: true, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }))), [])
+  const handlePreviewPlace = useCallback((item) => setAdminFocus({ id: item.id, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }), [])
   const [catalogPlaces, setCatalogPlaces] = useState(staticPlaces)
   const [catalogCategories, setCatalogCategories] = useState(categoryConfig)
   const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig)
@@ -254,7 +245,7 @@ function App() {
   const statusMessage = mapStatus === 'missing-key' ? '配置 VITE_AMAP_KEY 后显示高德底图' : mapStatus === 'error' ? '高德地图加载失败，请检查 Key 与域名白名单' : dataStatus === 'error' ? '动态地点加载失败，当前显示本地种子数据' : ''
 
   return <main className="app-shell">
-    <div className="fullscreen-map"><AmapCanvas places={filtered} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled} resetSignal={resetSignal} /><div className="map-fallback" aria-hidden="true" /></div>
+    <div className="fullscreen-map"><AmapCanvas places={filtered} previewPlaces={adminPreviewPlaces} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled} resetSignal={resetSignal} focusPlace={adminFocus} /><div className="map-fallback" aria-hidden="true" /></div>
     <header className="floating-header"><div className="brand-lockup"><div className="brand-mark">赭</div><div><p className="eyebrow">AHNU · ZHESHAN CAMPUS</p><h1>赭山生活地图</h1></div></div><div className="header-actions">{supabaseConfigured && <><button className="utility-trigger" onClick={() => { setStatusPanel(true); setAdminPanel(false); setDraft(null) }}>查投稿</button><button className="utility-trigger" onClick={() => { setAdminPanel(true); setStatusPanel(false); setDraft(null) }}>管理</button></>}{((supabaseConfigured && appConfig.enablePublicSubmissions) || (!supabaseConfigured && appConfig.enableDebugAddPoint)) && <button className={`debug-trigger ${debugEnabled ? 'active' : ''}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null) }}>＋<span>{debugEnabled ? '取消加点' : supabaseConfigured ? '投稿地点' : '调试录点'}</span></button>}<button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null) }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button></div></header>
     <section className="floating-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜店面或关键词" /></label><div className="category-row" role="tablist" aria-label="地点分类">{categoriesForUi.map((category) => <button key={category.id} className={`category-chip ${activeCategory === category.id ? 'active' : ''}`} onClick={() => setActiveCategory(category.id)}>{category.label}</button>)}</div></section>
     <button className="map-stamp" onClick={() => { setSelected(null); setDraft(null); setResetSignal((value) => value + 1) }} title="回到地图起点"><span>赭山校区</span><small>安徽师范大学 → 点我回去</small></button>
@@ -263,7 +254,7 @@ function App() {
     {debugEnabled && !draft && <div className="debug-hint">点击地图放置新的推荐点</div>}
     {draft && (supabaseConfigured ? <SubmissionForm draft={draft} setDraft={setDraft} categories={categoriesForUi} detailFields={catalogDetailFields} onClose={() => setDraft(null)} /> : <DebugForm draft={draft} setDraft={setDraft} onClose={() => setDraft(null)} />)}
     {statusPanel && <SubmissionStatus onClose={() => setStatusPanel(false)} />}
-    {adminPanel && <AdminPanel onClose={() => setAdminPanel(false)} />}
+    {adminPanel && <AdminPanel onClose={() => { setAdminPanel(false); setAdminPreviewPlaces([]); setAdminFocus(null) }} onPendingChange={handlePendingChange} onPreviewPlace={handlePreviewPlace} />}
     {drawer && <aside className="recommendation-drawer"><div className="drawer-handle" /><div className="drawer-heading"><div><p className="section-kicker">APPROVED PLACES</p><h2>附近值得去</h2></div><button className="drawer-close" onClick={() => setDrawer(false)} aria-label="关闭推荐">×</button></div><div className="drawer-filters"><span>{filtered.length} 个地点</span><span>管理员审核通过</span></div><div className="place-list">{filtered.map((place) => <article key={place.id} role="button" tabIndex="0" className={`place-card ${selected?.id === place.id ? 'selected' : ''} ${place.cover ? '' : 'no-image'}`} onClick={() => selectPlace(place)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectPlace(place) }}>{place.cover && <div className="place-image" style={{ backgroundImage: `url(${place.cover})` }}><span className="place-category" style={{ background: place.color }}>{place.categoryLabel}</span>{place.rating !== appConfig.defaultRating && <span className="rating">★ {place.rating}</span>}</div>}<div className="place-body"><div className="place-title"><h3>{place.name}</h3><span className="arrow">↗</span></div><p className="place-address">{place.address}</p><div className="tag-row">{place.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p className="quote">“{place.recommendation}”</p></div></article>)}</div></aside>}
     {selected && <div className={`detail-drawer ${selected.cover ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selected.cover && <div className="drawer-image" style={{ backgroundImage: `url(${selected.cover})` }} />}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: selected.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
   </main>

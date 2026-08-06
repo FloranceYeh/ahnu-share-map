@@ -92,6 +92,13 @@ export async function loadPendingPlaces() {
   return data || []
 }
 
+export async function loadPendingImageUrls(paths = []) {
+  if (!supabase || !paths.length) return []
+  const { data, error } = await supabase.storage.from('submission-images').createSignedUrls(paths, 3600)
+  if (error) throw error
+  return (data || []).map((item) => item.signedUrl).filter(Boolean)
+}
+
 export async function reviewPlace(id, status, rejectionReason = '', changes = {}) {
   if (!supabase) throw new Error('Supabase 未配置')
   const { data: existing, error: fetchError } = await supabase.from('places').select('*').eq('id', id).single()
