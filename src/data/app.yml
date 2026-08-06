@@ -5,7 +5,8 @@
   mapMaxZoom: 19
   mapStyle: amap://styles/normal
   coordinateSystem: wgs84
-  enableDebugAddPoint: true
+  enableDebugAddPoint: false
+  enablePublicSubmissions: true
   coordinateStep: [0.0008, 0.0007]
   placeIdPrefix: place
   allCategoryLabel: 全部

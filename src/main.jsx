@@ -4,6 +4,10 @@ import yamlText from './data/places.yml?raw'
 import categoryYamlText from './data/categories.yml?raw'
 import appYamlText from './data/app.yml?raw'
 import detailYamlText from './data/details.yml?raw'
+import { getSubmissionStatus, loadDynamicCatalog, mapDynamicPlace, submitPlace, supabaseConfigured } from './lib/supabase'
+import SubmissionForm from './components/SubmissionForm'
+import SubmissionStatus from './components/SubmissionStatus'
+import AdminPanel from './components/AdminPanel'
 import './styles.css'
 
 function parseScalar(value) {
@@ -85,12 +89,13 @@ const categoryConfig = parseYaml(categoryYamlText).filter((item) => item.id && i
 const categoryById = Object.fromEntries(categoryConfig.map((category) => [category.id, category]))
 const categories = [{ id: 'all', label: appConfig.allCategoryLabel }, ...categoryConfig]
 
-const places = parseYaml(yamlText).filter((item) => item.name && item.recommendation).map((item, index) => ({
+const staticPlaces = parseYaml(yamlText).filter((item) => item.name && item.recommendation).map((item, index) => ({
   id: item.id || `${appConfig.placeIdPrefix}-${index + 1}`,
   name: item.name,
   recommendation: item.recommendation,
   category: categoryById[item.category] ? item.category : appConfig.defaultCategory,
   categoryLabel: categoryById[item.category]?.label || categoryById[appConfig.defaultCategory]?.label,
+  color: categoryById[item.category]?.color || appConfig.defaultCategoryColor,
   // Admin data uses [lat, lng]; AMap uses [lng, lat].
   coordinates: Array.isArray(item.coordinates) && item.coordinates.length === 2 ? toAmapCoordinates([item.coordinates[1], item.coordinates[0]]) : [CENTER[0] + index * appConfig.coordinateStep[0], CENTER[1] + index * appConfig.coordinateStep[1]],
   address: item.address || appConfig.defaultAddress,
@@ -147,7 +152,7 @@ function AmapCanvas({ places: visiblePlaces, selected, onSelect, onStatus, onMap
     if (!map || !window.AMap) return
     map.clearMap()
     visiblePlaces.forEach((place) => {
-      const color = categoryById[place.category]?.color || appConfig.defaultCategoryColor
+      const color = place.color || appConfig.defaultCategoryColor
       const marker = new window.AMap.Marker({ position: place.coordinates, content: `<span class="dot-marker ${selected?.id === place.id ? 'is-active' : ''}" style="--dot-color:${color}"></span>`, offset: new window.AMap.Pixel(-9, -9), zIndex: selected?.id === place.id ? 120 : 100, title: place.name })
       marker.on('click', () => onSelect(place))
       map.add(marker)
@@ -203,11 +208,33 @@ function App() {
   const [debugEnabled, setDebugEnabled] = useState(false)
   const [draft, setDraft] = useState(null)
   const [resetSignal, setResetSignal] = useState(0)
-  const filtered = useMemo(() => places.filter((place) => {
+  const [statusPanel, setStatusPanel] = useState(false)
+  const [adminPanel, setAdminPanel] = useState(false)
+  const [catalogPlaces, setCatalogPlaces] = useState(staticPlaces)
+  const [catalogCategories, setCatalogCategories] = useState(categoryConfig)
+  const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig)
+  const [dataStatus, setDataStatus] = useState('static')
+  useEffect(() => {
+    if (!supabaseConfigured) return
+    loadDynamicCatalog().then((catalog) => {
+      const nextCategories = (catalog.categories || []).map((category) => ({ id: category.id, label: category.label, color: category.color }))
+      const nextFields = (catalog.detailFields || []).map((field) => ({ key: field.key, label: field.label, default: field.default_value || '' }))
+      const nextCategoryById = Object.fromEntries(nextCategories.map((category) => [category.id, category]))
+      setCatalogCategories(nextCategories.length ? nextCategories : categoryConfig)
+      setCatalogDetailFields(nextFields.length ? nextFields : detailConfig)
+      setCatalogPlaces((catalog.places || []).map((place) => {
+        const mapped = mapDynamicPlace(place, nextCategoryById, nextFields)
+        return { ...mapped, coordinates: toAmapCoordinates(mapped.coordinates) }
+      }))
+      setDataStatus('dynamic')
+    }).catch(() => setDataStatus('error'))
+  }, [])
+  const categoriesForUi = useMemo(() => [{ id: 'all', label: appConfig.allCategoryLabel }, ...catalogCategories], [catalogCategories])
+  const filtered = useMemo(() => catalogPlaces.filter((place) => {
     const matchesCategory = activeCategory === 'all' || place.category === activeCategory
     const query = search.trim().toLowerCase()
     return matchesCategory && (!query || `${place.name} ${place.address} ${place.tags.join(' ')}`.toLowerCase().includes(query))
-  }), [activeCategory, search])
+  }), [activeCategory, search, catalogPlaces])
   const selectPlace = (place) => { setSelected(place); setDrawer(false) }
   const createDraft = (coordinates) => {
     if (!debugEnabled) return
@@ -221,22 +248,24 @@ function App() {
       recommendation: '',
       category: appConfig.defaultCategory,
       custom: [{ key: '', value: '' }],
-      ...Object.fromEntries(detailConfig.map((field) => [field.key, ''])),
+      ...Object.fromEntries(catalogDetailFields.map((field) => [field.key, ''])),
     })
   }
-  const statusMessage = mapStatus === 'missing-key' ? '配置 VITE_AMAP_KEY 后显示高德底图' : mapStatus === 'error' ? '高德地图加载失败，请检查 Key 与域名白名单' : ''
+  const statusMessage = mapStatus === 'missing-key' ? '配置 VITE_AMAP_KEY 后显示高德底图' : mapStatus === 'error' ? '高德地图加载失败，请检查 Key 与域名白名单' : dataStatus === 'error' ? '动态地点加载失败，当前显示本地种子数据' : ''
 
   return <main className="app-shell">
     <div className="fullscreen-map"><AmapCanvas places={filtered} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled} resetSignal={resetSignal} /><div className="map-fallback" aria-hidden="true" /></div>
-    <header className="floating-header"><div className="brand-lockup"><div className="brand-mark">赭</div><div><p className="eyebrow">AHNU · ZHESHAN CAMPUS</p><h1>赭山生活地图</h1></div></div><div className="header-actions">{appConfig.enableDebugAddPoint && <button className={`debug-trigger ${debugEnabled ? 'active' : ''}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null) }}>＋<span>{debugEnabled ? '退出录点' : '调试录点'}</span></button>}<button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null) }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button></div></header>
-    <section className="floating-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜店面或关键词" /></label><div className="category-row" role="tablist" aria-label="地点分类">{categories.map((category) => <button key={category.id} className={`category-chip ${activeCategory === category.id ? 'active' : ''}`} onClick={() => setActiveCategory(category.id)}>{category.label}</button>)}</div></section>
+    <header className="floating-header"><div className="brand-lockup"><div className="brand-mark">赭</div><div><p className="eyebrow">AHNU · ZHESHAN CAMPUS</p><h1>赭山生活地图</h1></div></div><div className="header-actions">{supabaseConfigured && <><button className="utility-trigger" onClick={() => { setStatusPanel(true); setAdminPanel(false); setDraft(null) }}>查投稿</button><button className="utility-trigger" onClick={() => { setAdminPanel(true); setStatusPanel(false); setDraft(null) }}>管理</button></>}{((supabaseConfigured && appConfig.enablePublicSubmissions) || (!supabaseConfigured && appConfig.enableDebugAddPoint)) && <button className={`debug-trigger ${debugEnabled ? 'active' : ''}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null) }}>＋<span>{debugEnabled ? '取消加点' : supabaseConfigured ? '投稿地点' : '调试录点'}</span></button>}<button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null) }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button></div></header>
+    <section className="floating-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜店面或关键词" /></label><div className="category-row" role="tablist" aria-label="地点分类">{categoriesForUi.map((category) => <button key={category.id} className={`category-chip ${activeCategory === category.id ? 'active' : ''}`} onClick={() => setActiveCategory(category.id)}>{category.label}</button>)}</div></section>
     <button className="map-stamp" onClick={() => { setSelected(null); setDraft(null); setResetSignal((value) => value + 1) }} title="回到地图起点"><span>赭山校区</span><small>安徽师范大学 → 点我回去</small></button>
     {statusMessage && <div className="map-status-note">{statusMessage}</div>}
-    <div className="map-legend">{categoryConfig.map((category) => <span key={category.id}><i className="legend-dot" style={{ background: category.color }} />{category.label}</span>)}</div>
+    <div className="map-legend">{catalogCategories.map((category) => <span key={category.id}><i className="legend-dot" style={{ background: category.color }} />{category.label}</span>)}</div>
     {debugEnabled && !draft && <div className="debug-hint">点击地图放置新的推荐点</div>}
-    {draft && <DebugForm draft={draft} setDraft={setDraft} onClose={() => setDraft(null)} />}
-    {drawer && <aside className="recommendation-drawer"><div className="drawer-handle" /><div className="drawer-heading"><div><p className="section-kicker">TODAY'S PICKS</p><h2>附近值得去</h2></div><button className="drawer-close" onClick={() => setDrawer(false)} aria-label="关闭推荐">×</button></div><div className="drawer-filters"><span>{filtered.length} 个地点</span><span>学长精选 · 静态内容</span></div><div className="place-list">{filtered.map((place) => <article key={place.id} role="button" tabIndex="0" className={`place-card ${selected?.id === place.id ? 'selected' : ''} ${place.cover ? '' : 'no-image'}`} onClick={() => selectPlace(place)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectPlace(place) }}>{place.cover && <div className="place-image" style={{ backgroundImage: `url(${place.cover})` }}><span className="place-category" style={{ background: categoryById[place.category]?.color }}>{place.categoryLabel}</span>{place.rating !== appConfig.defaultRating && <span className="rating">★ {place.rating}</span>}</div>}<div className="place-body"><div className="place-title"><h3>{place.name}</h3><span className="arrow">↗</span></div><p className="place-address">{place.address}</p><div className="tag-row">{place.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p className="quote">“{place.recommendation}”</p></div></article>)}</div></aside>}
-    {selected && <div className={`detail-drawer ${selected.cover ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selected.cover && <div className="drawer-image" style={{ backgroundImage: `url(${selected.cover})` }} />}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: categoryById[selected.category]?.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
+    {draft && (supabaseConfigured ? <SubmissionForm draft={draft} setDraft={setDraft} categories={categoriesForUi} detailFields={catalogDetailFields} onClose={() => setDraft(null)} /> : <DebugForm draft={draft} setDraft={setDraft} onClose={() => setDraft(null)} />)}
+    {statusPanel && <SubmissionStatus onClose={() => setStatusPanel(false)} />}
+    {adminPanel && <AdminPanel onClose={() => setAdminPanel(false)} />}
+    {drawer && <aside className="recommendation-drawer"><div className="drawer-handle" /><div className="drawer-heading"><div><p className="section-kicker">APPROVED PLACES</p><h2>附近值得去</h2></div><button className="drawer-close" onClick={() => setDrawer(false)} aria-label="关闭推荐">×</button></div><div className="drawer-filters"><span>{filtered.length} 个地点</span><span>管理员审核通过</span></div><div className="place-list">{filtered.map((place) => <article key={place.id} role="button" tabIndex="0" className={`place-card ${selected?.id === place.id ? 'selected' : ''} ${place.cover ? '' : 'no-image'}`} onClick={() => selectPlace(place)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectPlace(place) }}>{place.cover && <div className="place-image" style={{ backgroundImage: `url(${place.cover})` }}><span className="place-category" style={{ background: place.color }}>{place.categoryLabel}</span>{place.rating !== appConfig.defaultRating && <span className="rating">★ {place.rating}</span>}</div>}<div className="place-body"><div className="place-title"><h3>{place.name}</h3><span className="arrow">↗</span></div><p className="place-address">{place.address}</p><div className="tag-row">{place.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p className="quote">“{place.recommendation}”</p></div></article>)}</div></aside>}
+    {selected && <div className={`detail-drawer ${selected.cover ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selected.cover && <div className="drawer-image" style={{ backgroundImage: `url(${selected.cover})` }} />}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: selected.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
   </main>
 }
 
