@@ -89,4 +89,41 @@ button { cursor:pointer; }
 .detail-drawer.no-image .drawer-content { padding-right:48px; }
 .map-stamp { border-top:0; border-right:0; border-bottom:0; text-align:left; transition:transform .18s, box-shadow .18s; }
 .map-stamp:hover { transform:translateY(-1px); box-shadow:0 9px 22px rgba(42,60,48,.18); }
+
+/* Compact mode: reduce application typography by 2px. */
+.eyebrow, .section-kicker { font-size:9px; }
+.brand-lockup h1 { font-size:18px; }
+.drawer-trigger { font-size:10px; }
+.drawer-trigger b { font-size:8px; }
+.search-box input { font-size:12px; }
+.category-chip { font-size:11px; }
+.map-stamp span { font-size:15px; }
+.map-stamp small { font-size:9px; }
+.map-legend { font-size:10px; }
+.drawer-heading h2 { font-size:29px; }
+.drawer-close { font-size:19px; }
+.drawer-filters { font-size:10px; }
+.place-category, .rating { font-size:9px; }
+.place-title h3 { font-size:14px; }
+.place-address { font-size:10px; }
+.tag-row span { font-size:9px; }
+.quote { font-size:11px; }
+.empty-state h3 { font-size:14px; }
+.empty-state p { font-size:9px; }
+.drawer-meta { font-size:10px; }
+.drawer-content h2 { font-size:25px; }
+.drawer-address { font-size:10px; }
+.detail-grid span { font-size:8px; }
+.detail-grid strong { font-size:9px; }
+.note-label { font-size:9px; }
+.senior-note p { font-size:12px; }
+.tip-line { font-size:9px; }
+.highlight-list span { font-size:8px; }
+.debug-trigger { font-size:11px; }
+.debug-form label { font-size:10px; }
+.debug-form input, .debug-form textarea, .debug-form select { font-size:11px; }
+.custom-heading { font-size:10px; }
+.custom-heading button { font-size:9px; }
+.yaml-preview { font-size:9px !important; }
+.copy-yaml { font-size:11px; }
 @media (max-width:700px) { .debug-trigger { width:40px; padding:0; justify-content:center; font-size:18px; }.debug-trigger span { display:none; }.header-actions { gap:6px; }.debug-panel { top:auto; bottom:0; width:100%; max-height:83%; padding:20px 14px 24px; border-top:1px solid #d6ded4; border-left:0; border-radius:15px 15px 0 0; }.debug-hint { top:132px; white-space:nowrap; }.coordinate-fields, .optional-fields { grid-template-columns:1fr 1fr; } }
