@@ -105,19 +105,19 @@ button { cursor:pointer; }
 .drawer-filters { font-size:10px; }
 .place-category, .rating { font-size:9px; }
 .place-title h3 { font-size:14px; }
-.place-address { font-size:10px; }
-.tag-row span { font-size:9px; }
-.quote { font-size:11px; }
+.place-address { font-size:12px; }
+.tag-row span { font-size:11px; }
+.quote { font-size:13px; }
 .empty-state h3 { font-size:14px; }
 .empty-state p { font-size:9px; }
 .drawer-meta { font-size:10px; }
 .drawer-content h2 { font-size:25px; }
-.drawer-address { font-size:10px; }
-.detail-grid span { font-size:8px; }
-.detail-grid strong { font-size:9px; }
-.note-label { font-size:9px; }
-.senior-note p { font-size:12px; }
-.tip-line { font-size:9px; }
+.drawer-address { font-size:12px; }
+.detail-grid span { font-size:10px; }
+.detail-grid strong { font-size:11px; }
+.note-label { font-size:13px; }
+.senior-note p { font-size:14px; }
+.tip-line { font-size:11px; }
 .highlight-list span { font-size:8px; }
 .debug-trigger { font-size:11px; }
 .debug-form label { font-size:10px; }
