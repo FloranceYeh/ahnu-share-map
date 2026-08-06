@@ -193,6 +193,7 @@ function App() {
   const [drawer, setDrawer] = useState(false)
   const [mapStatus, setMapStatus] = useState('loading')
   const [debugEnabled, setDebugEnabled] = useState(false)
+  const [adminAddEnabled, setAdminAddEnabled] = useState(false)
   const [draft, setDraft] = useState(null)
   const [resetSignal, setResetSignal] = useState(0)
   const [statusPanel, setStatusPanel] = useState(false)
@@ -240,16 +241,17 @@ function App() {
   }), [activeCategory, search, catalogPlaces])
   const selectPlace = (place) => { setSelected(place); setDrawer(false) }
   const createDraft = (coordinates) => {
-    if (!debugEnabled) return
+    if (!debugEnabled && !adminAddEnabled) return
     const [longitude, latitude] = fromAmapCoordinates(coordinates)
     setSelected(null)
     setDrawer(false)
+    const defaultCategory = catalogCategories.some((category) => category.id === appConfig.defaultCategory) ? appConfig.defaultCategory : catalogCategories[0]?.id || ''
     setDraft({
       latitude: latitude.toFixed(6),
       longitude: longitude.toFixed(6),
       name: '',
       recommendation: '',
-      category: appConfig.defaultCategory,
+      category: defaultCategory,
       custom: [{ key: '', value: '' }],
       ...Object.fromEntries(catalogDetailFields.map((field) => [field.key, ''])),
     })
@@ -257,16 +259,16 @@ function App() {
   const statusMessage = mapStatus === 'missing-key' ? '配置 VITE_AMAP_KEY 后显示高德底图' : mapStatus === 'error' ? '高德地图加载失败，请检查 Key 与域名白名单' : dataStatus === 'error' ? '动态地点加载失败，当前显示本地种子数据' : ''
 
   return <main className="app-shell">
-    <div className="fullscreen-map"><AmapCanvas places={filtered} previewPlaces={adminPreviewPlaces} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled} resetSignal={resetSignal} focusPlace={adminFocus} /><div className="map-fallback" aria-hidden="true" /></div>
+    <div className="fullscreen-map"><AmapCanvas places={filtered} previewPlaces={adminPreviewPlaces} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled || adminAddEnabled} resetSignal={resetSignal} focusPlace={adminFocus} /><div className="map-fallback" aria-hidden="true" /></div>
     <header className="floating-header"><div className="brand-lockup"><div className="brand-mark">赭</div><div className="brand-copy"><p className="eyebrow">AHNU · ZHESHAN CAMPUS</p><h1>赭山生活地图</h1></div><button className="author-trigger" onClick={() => setContactOpen(true)}>联系作者</button></div><div className="header-actions">{supabaseConfigured && <><button className="utility-trigger" onClick={() => { setStatusPanel(true); setAdminPanel(false); setDraft(null) }}>查投稿</button><button className="utility-trigger" onClick={() => { setAdminPanel(true); setStatusPanel(false); setDraft(null) }}>管理</button></>}{((supabaseConfigured && appConfig.enablePublicSubmissions) || (!supabaseConfigured && appConfig.enableDebugAddPoint)) && <button className={`debug-trigger ${debugEnabled ? 'active' : ''}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null) }}>＋<span>{debugEnabled ? '取消加点' : supabaseConfigured ? '投稿地点' : '调试录点'}</span></button>}<button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null) }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button></div></header>
     <section className="floating-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜店面或关键词" /></label><div className="category-row" role="tablist" aria-label="地点分类">{categoriesForUi.map((category) => <button key={category.id} className={`category-chip ${activeCategory === category.id ? 'active' : ''}`} onClick={() => setActiveCategory(category.id)}>{category.label}</button>)}</div></section>
     <button className="map-stamp" onClick={() => { setSelected(null); setDraft(null); setResetSignal((value) => value + 1) }} title="回到地图起点"><span>赭山校区</span><small>安徽师范大学 → 点我回去</small></button>
     {statusMessage && <div className="map-status-note">{statusMessage}</div>}
     <div className="map-legend">{catalogCategories.map((category) => <span key={category.id}><i className="legend-dot" style={{ background: category.color }} />{category.label}</span>)}</div>
-    {debugEnabled && !draft && <div className="debug-hint">点击地图放置新的推荐点</div>}
-    {draft && (supabaseConfigured ? <SubmissionForm draft={draft} setDraft={setDraft} categories={categoriesForUi} detailFields={catalogDetailFields} onClose={() => setDraft(null)} /> : <DebugForm draft={draft} setDraft={setDraft} onClose={() => setDraft(null)} />)}
+    {(debugEnabled || adminAddEnabled) && !draft && <div className="debug-hint">点击地图放置新的推荐点</div>}
     {statusPanel && <SubmissionStatus onClose={() => setStatusPanel(false)} />}
-    {adminPanel && <AdminPanel onClose={() => { setAdminPanel(false); setAdminPreviewPlaces([]); setAdminFocus(null) }} onPendingChange={handlePendingChange} onPreviewPlace={handlePreviewPlace} onDataChanged={refreshCatalog} />}
+    {adminPanel && <AdminPanel adminAddEnabled={adminAddEnabled} onAdminAddPoint={setAdminAddEnabled} onClose={() => { setAdminPanel(false); setAdminAddEnabled(false); setAdminPreviewPlaces([]); setAdminFocus(null) }} onPendingChange={handlePendingChange} onPreviewPlace={handlePreviewPlace} onDataChanged={refreshCatalog} />}
+    {draft && (supabaseConfigured ? <SubmissionForm draft={draft} setDraft={setDraft} categories={categoriesForUi} detailFields={catalogDetailFields} adminMode={adminAddEnabled} onSubmitted={() => refreshCatalog()} onClose={() => { setDraft(null); if (adminAddEnabled) setAdminAddEnabled(false) }} /> : <DebugForm draft={draft} setDraft={setDraft} onClose={() => setDraft(null)} />)}
     {drawer && <aside className="recommendation-drawer"><div className="drawer-handle" /><div className="drawer-heading"><div><p className="section-kicker">APPROVED PLACES</p><h2>附近值得去</h2></div><button className="drawer-close" onClick={() => setDrawer(false)} aria-label="关闭推荐">×</button></div><div className="drawer-filters"><span>{filtered.length} 个地点</span><span>管理员审核通过</span></div><div className="place-list">{filtered.map((place) => <article key={place.id} role="button" tabIndex="0" className={`place-card ${selected?.id === place.id ? 'selected' : ''} ${place.cover ? '' : 'no-image'}`} onClick={() => selectPlace(place)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectPlace(place) }}>{place.cover && <div className="place-image" style={{ backgroundImage: `url(${place.cover})` }}><span className="place-category" style={{ background: place.color }}>{place.categoryLabel}</span>{place.rating !== appConfig.defaultRating && <span className="rating">★ {place.rating}</span>}</div>}<div className="place-body"><div className="place-title"><h3>{place.name}</h3><span className="arrow">↗</span></div><p className="place-address">{place.address}</p><div className="tag-row">{place.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p className="quote">“{place.recommendation}”</p></div></article>)}</div></aside>}
     {selected && <div className={`detail-drawer ${selected.cover ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selected.cover && <div className="drawer-image" style={{ backgroundImage: `url(${selected.cover})` }} />}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: selected.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
     {contactOpen && <div className="author-modal-backdrop" role="presentation" onClick={() => setContactOpen(false)}><section className="author-card" role="dialog" aria-modal="true" aria-labelledby="author-dialog-title" onClick={(event) => event.stopPropagation()}><button className="author-close" onClick={() => setContactOpen(false)} aria-label="关闭联系作者">×</button><p className="section-kicker">CONTACT</p><h2 id="author-dialog-title">联系作者</h2><div className="author-detail"><span>QQ</span><strong>3393314989</strong></div><div className="author-detail"><span>个人主页</span><a href="https://florance.top" target="_blank" rel="noreferrer">florance.top ↗</a></div></section></div>}

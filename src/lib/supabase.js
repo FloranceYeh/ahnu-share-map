@@ -145,6 +145,45 @@ export async function saveDetailField(field) {
   return data
 }
 
+export async function deleteCategory(id) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data: referencedPlaces, error: referenceError } = await supabase.from('places').select('id').eq('category_id', id).limit(1)
+  if (referenceError) throw referenceError
+  if (referencedPlaces?.length) throw new Error('该分类仍被地点使用，请先修改相关地点的分类')
+  const { error } = await supabase.from('categories').delete().eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteDetailField(key) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { error } = await supabase.from('detail_fields').delete().eq('key', key)
+  if (error) throw error
+}
+
+export async function createApprovedPlaceWithImages(payload, files = []) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data: userResult, error: userError } = await supabase.auth.getUser()
+  if (userError || !userResult.user) throw userError || new Error('管理员登录已失效')
+  const id = payload.id || crypto.randomUUID()
+  const publicUrls = []
+  for (const file of files) {
+    const path = `${id}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, '_')}`
+    const { error } = await supabase.storage.from('place-images').upload(path, file, { upsert: false, contentType: file.type })
+    if (error) throw error
+    publicUrls.push(supabase.storage.from('place-images').getPublicUrl(path).data.publicUrl)
+  }
+  const { data, error } = await supabase.from('places').insert({
+    ...payload,
+    id,
+    status: 'approved',
+    cover_url: publicUrls[0] || payload.cover_url || null,
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: userResult.user.id,
+  }).select('query_code').single()
+  if (error) throw error
+  return data.query_code
+}
+
 export async function loadPendingImageUrls(paths = []) {
   if (!supabase || !paths.length) return []
   const { data, error } = await supabase.storage.from('submission-images').createSignedUrls(paths, 3600)
