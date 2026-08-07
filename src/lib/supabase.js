@@ -262,10 +262,12 @@ export async function removePublishedImage(placeId, imageUrl) {
 
 export async function setPublishedCover(placeId, imageUrl) {
   if (!supabase) throw new Error('Supabase 未配置')
-  const { data: existing, error: fetchError } = await supabase.from('places').select('image_urls').eq('id', placeId).single()
+  const { data: existing, error: fetchError } = await supabase.from('places').select('image_urls,cover_url').eq('id', placeId).single()
   if (fetchError) throw fetchError
-  if (!(existing.image_urls || []).includes(imageUrl)) throw new Error('图片不存在')
-  const { error } = await supabase.from('places').update({ cover_url: imageUrl }).eq('id', placeId)
+  const currentUrls = existing.image_urls?.length ? existing.image_urls : existing.cover_url ? [existing.cover_url] : []
+  if (!currentUrls.includes(imageUrl)) throw new Error('图片不存在')
+  const imageUrls = [imageUrl, ...currentUrls.filter((url) => url !== imageUrl)]
+  const { error } = await supabase.from('places').update({ cover_url: imageUrl, image_urls: imageUrls }).eq('id', placeId)
   if (error) throw error
 }
 
