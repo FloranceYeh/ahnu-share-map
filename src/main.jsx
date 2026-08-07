@@ -5,7 +5,6 @@ import appYamlText from './data/app.yml?raw'
 import detailYamlText from './data/details.yml?raw'
 import { getSubmissionStatus, loadDynamicCatalog, mapDynamicPlace, submitPlace, supabaseConfigured } from './lib/supabase'
 import SubmissionForm from './components/SubmissionForm'
-import Turnstile from './components/Turnstile'
 import SubmissionStatus from './components/SubmissionStatus'
 import AdminPanel from './components/AdminPanel'
 import ImageLightbox from './components/ImageLightbox'
@@ -283,7 +282,6 @@ function App() {
   const selectedImages = selected?.images?.length ? selected.images : selected?.cover ? [selected.cover] : []
 
   return <main className="app-shell">
-    <Turnstile autoExecute onToken={() => {}} onError={() => {}} />
     <div className="fullscreen-map"><AmapCanvas places={filtered} previewPlaces={adminPreviewPlaces} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled || adminAddEnabled} resetSignal={resetSignal} focusPlace={adminFocus} /><div className="map-fallback" aria-hidden="true" /></div>
     <header className="floating-header"><div className="brand-lockup"><img className="brand-mark" src="/logo.png" alt="" /><div className="brand-copy"><p className="eyebrow">AHNU · ZHESHAN CAMPUS</p><h1>赭山生活地图</h1></div><div className="brand-actions"><button className="author-trigger" onClick={() => setGuideOpen(true)}>重看引导</button><button className="author-trigger" onClick={() => setContactOpen(true)}>联系作者</button></div></div><div className="header-actions">{supabaseConfigured && <><button className="utility-trigger" onClick={() => { setStatusPanel(true); setAdminPanel(false); setDraft(null) }}>查投稿</button><button className="utility-trigger" onClick={() => { setAdminPanel(true); setStatusPanel(false); setDraft(null) }}>管理</button></>}{((supabaseConfigured && appConfig.enablePublicSubmissions) || (!supabaseConfigured && appConfig.enableDebugAddPoint)) && <button className={`debug-trigger ${debugEnabled ? 'active' : ''}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null) }}>＋<span>{debugEnabled ? '取消加点' : supabaseConfigured ? '投稿地点' : '调试录点'}</span></button>}<button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null) }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button></div></header>
     <section className="floating-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜店面或关键词" /></label><div className="category-row" role="tablist" aria-label="地点分类">{categoriesForUi.map((category) => <button key={category.id} className={`category-chip ${activeCategory === category.id ? 'active' : ''}`} onClick={() => setActiveCategory(category.id)}>{category.label}</button>)}</div></section>
