@@ -6,6 +6,27 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const supabaseConfigured = Boolean(url && anonKey)
 export const supabase = supabaseConfigured ? createClient(url, anonKey) : null
 
+export async function compressImageToWebp(file, maxDimension = 1600, quality = 0.82) {
+  if (!file?.type?.startsWith('image/') || file.type === 'image/gif' || typeof createImageBitmap !== 'function') return file
+  let bitmap
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality))
+    bitmap.close()
+    if (!blob || blob.size >= file.size) return file
+    const basename = file.name.replace(/\.[^.]+$/, '') || 'image'
+    return new File([blob], `${basename}.webp`, { type: 'image/webp', lastModified: Date.now() })
+  } catch {
+    bitmap?.close?.()
+    return file
+  }
+}
+
 export async function loadDynamicCatalog() {
   if (!supabase) return null
   const [categoriesResult, fieldsResult, placesResult] = await Promise.all([
@@ -64,7 +85,8 @@ export async function submitPlaceWithImages(payload, files = [], turnstileToken)
   if (!supabase) throw new Error('Supabase 未配置')
   const submissionId = crypto.randomUUID()
   const imagePaths = []
-  for (const file of files) {
+  for (const sourceFile of files) {
+    const file = await compressImageToWebp(sourceFile)
     const path = `${submissionId}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, '_')}`
     const { error } = await supabase.storage.from('submission-images').upload(path, file, { upsert: false, contentType: file.type })
     if (error) throw error
@@ -180,7 +202,8 @@ export async function createApprovedPlaceWithImages(payload, files = []) {
   if (userError || !userResult.user) throw userError || new Error('管理员登录已失效')
   const id = payload.id || crypto.randomUUID()
   const publicUrls = []
-  for (const file of files) {
+  for (const sourceFile of files) {
+    const file = await compressImageToWebp(sourceFile)
     const path = `${id}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, '_')}`
     const { error } = await supabase.storage.from('place-images').upload(path, file, { upsert: false, contentType: file.type })
     if (error) throw error
@@ -232,7 +255,8 @@ export async function uploadPublishedImages(placeId, files = []) {
   const currentUrls = existing.image_urls?.length ? existing.image_urls : existing.cover_url ? [existing.cover_url] : []
   if (currentUrls.length + files.length > 12) throw new Error('每个地点最多保留12张图片')
   const newUrls = []
-  for (const file of files) {
+  for (const sourceFile of files) {
+    const file = await compressImageToWebp(sourceFile)
     const path = `${placeId}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, '_')}`
     const { error } = await supabase.storage.from('place-images').upload(path, file, { upsert: false, contentType: file.type })
     if (error) throw error
