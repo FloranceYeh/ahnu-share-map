@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 const TOKEN_TTL_MS = 4 * 60 * 1000
 let cachedToken = ''
@@ -34,84 +34,77 @@ const loadTurnstile = () => {
   })
 }
 
-const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false, renderOnMount = false }, ref) {
+const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false }, ref) {
   const containerRef = useRef(null)
   const widgetIdRef = useRef(null)
-  const onTokenRef = useRef(onToken)
-  const onErrorRef = useRef(onError)
   const [active, setActive] = useState(false)
   const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
 
-  useEffect(() => { onTokenRef.current = onToken }, [onToken])
-  useEffect(() => { onErrorRef.current = onError }, [onError])
-  useEffect(() => {
-    if (siteKey) loadTurnstile().catch(() => {})
-  }, [siteKey])
-
-  const handleToken = useCallback((token) => {
+  const rememberToken = (token) => {
     if (token) {
       cachedToken = token
       cachedAt = Date.now()
     }
-    onTokenRef.current?.(token)
-  }, [])
+    onToken?.(token)
+  }
 
-  const renderWidget = useCallback(async () => {
+  useEffect(() => {
+    let disposed = false
     if (!siteKey) {
-      return null
+      rememberToken('development')
+      return undefined
     }
-    const turnstile = await loadTurnstile()
-    if (widgetIdRef.current === null) {
+    loadTurnstile().then((turnstile) => {
+      if (disposed || !containerRef.current || widgetIdRef.current !== null) return
       widgetIdRef.current = turnstile.render(containerRef.current, {
         sitekey: siteKey,
-        execution: 'execute',
-        appearance: autoExecute ? 'interaction-only' : 'always',
-        callback: handleToken,
+        ...(autoExecute ? { execution: 'execute', appearance: 'interaction-only' } : {}),
+        callback: rememberToken,
         'expired-callback': () => {
           clearPreloadedToken()
-          onErrorRef.current?.('安全验证已过期，请重试')
+          onError?.('安全验证已过期，请重试')
         },
-        'error-callback': () => onErrorRef.current?.('安全验证失败，请重试'),
+        'error-callback': () => onError?.('安全验证失败，请重试'),
       })
-    }
-    return turnstile
-  }, [autoExecute, handleToken, siteKey])
-
-  const execute = useCallback(async () => {
-    if (!siteKey) {
-      handleToken('development')
-      return
-    }
-    setActive(true)
-    try {
-      const turnstile = await renderWidget()
-      if (turnstile && widgetIdRef.current !== null) turnstile.execute(widgetIdRef.current)
-    } catch (error) {
-      setActive(false)
-      onErrorRef.current?.(error.message || '安全验证加载失败')
-    }
-  }, [handleToken, renderWidget, siteKey])
-
-  useEffect(() => {
-    if (!renderOnMount) return undefined
-    renderWidget().then(() => setActive(true)).catch((error) => onErrorRef.current?.(error.message || '安全验证加载失败'))
-    return undefined
-  }, [renderOnMount, renderWidget])
-
-  useEffect(() => {
-    if (!autoExecute) return undefined
-    const timer = window.setTimeout(() => execute(), 0)
-    return () => window.clearTimeout(timer)
-  }, [autoExecute, execute])
+      if (autoExecute) {
+        setActive(true)
+        turnstile.execute(widgetIdRef.current)
+      }
+    }).catch((error) => { if (!disposed) onError?.(error.message || '安全验证加载失败') })
+    return () => { disposed = true }
+  }, [autoExecute, onError, onToken, siteKey])
 
   useImperativeHandle(ref, () => ({
-    execute,
+    async execute() {
+      if (!siteKey) {
+        rememberToken('development')
+        return
+      }
+      setActive(true)
+      try {
+        const turnstile = await loadTurnstile()
+        if (widgetIdRef.current === null) {
+          widgetIdRef.current = turnstile.render(containerRef.current, {
+            sitekey: siteKey,
+            execution: 'execute',
+            appearance: 'interaction-only',
+            callback: rememberToken,
+            'expired-callback': () => { clearPreloadedToken(); onError?.('安全验证已过期，请重试') },
+            'error-callback': () => onError?.('安全验证失败，请重试'),
+          })
+        }
+        turnstile.execute(widgetIdRef.current)
+      } catch (error) {
+        setActive(false)
+        onError?.(error.message || '安全验证加载失败')
+      }
+    },
     reset() {
       if (window.turnstile && widgetIdRef.current !== null) window.turnstile.reset(widgetIdRef.current)
       setActive(false)
       clearPreloadedToken()
     },
-  }), [execute])
+  }), [onError, siteKey])
 
   return <div className={`turnstile-box ${autoExecute ? 'preloaded-turnstile' : ''} ${active ? 'active' : ''}`} ref={containerRef} />
 })
