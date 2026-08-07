@@ -1,16 +1,67 @@
-import React, { useEffect, useRef } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
-export default function Turnstile({ onToken }) {
-  const ref = useRef(null)
-  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
-  useEffect(() => {
-    if (!siteKey) { onToken('development'); return undefined }
-    const render = () => { if (window.turnstile && ref.current) window.turnstile.render(ref.current, { sitekey: siteKey, callback: onToken, 'expired-callback': () => onToken('') }) }
+const loadTurnstile = () => {
+  if (window.turnstile) return Promise.resolve(window.turnstile)
+  return new Promise((resolve, reject) => {
     const existing = document.querySelector('script[data-turnstile]')
-    if (existing) { existing.addEventListener('load', render); render() } else {
-      const script = document.createElement('script'); script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; script.async = true; script.defer = true; script.dataset.turnstile = 'true'; script.onload = render; document.head.appendChild(script)
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.turnstile), { once: true })
+      existing.addEventListener('error', () => reject(new Error('安全验证加载失败')), { once: true })
+      return
     }
-    return () => { if (window.turnstile && ref.current) window.turnstile.remove?.(ref.current) }
-  }, [onToken, siteKey])
-  return <div className="turnstile-box" ref={ref} />
+    const script = document.createElement('script')
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+    script.async = true
+    script.defer = true
+    script.dataset.turnstile = 'true'
+    script.onload = () => resolve(window.turnstile)
+    script.onerror = () => reject(new Error('安全验证加载失败'))
+    document.head.appendChild(script)
+  })
 }
+
+const Turnstile = forwardRef(function Turnstile({ onToken, onError }, ref) {
+  const containerRef = useRef(null)
+  const widgetIdRef = useRef(null)
+  const [active, setActive] = useState(false)
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
+
+  useEffect(() => {
+    if (siteKey) loadTurnstile().catch(() => {})
+  }, [siteKey])
+
+  useImperativeHandle(ref, () => ({
+    async execute() {
+      if (!siteKey) {
+        onToken('development')
+        return
+      }
+      setActive(true)
+      try {
+        const turnstile = await loadTurnstile()
+        if (widgetIdRef.current === null) {
+          widgetIdRef.current = turnstile.render(containerRef.current, {
+            sitekey: siteKey,
+            execution: 'execute',
+            appearance: 'interaction-only',
+            callback: onToken,
+            'expired-callback': () => onError?.('安全验证已过期，请重试'),
+            'error-callback': () => onError?.('安全验证失败，请重试'),
+          })
+        }
+        turnstile.execute(widgetIdRef.current)
+      } catch (error) {
+        setActive(false)
+        onError?.(error.message || '安全验证加载失败')
+      }
+    },
+    reset() {
+      if (window.turnstile && widgetIdRef.current !== null) window.turnstile.reset(widgetIdRef.current)
+      setActive(false)
+    },
+  }), [onError, onToken, siteKey])
+
+  return <div className={`turnstile-box ${active ? 'active' : ''}`} ref={containerRef} />
+})
+
+export default Turnstile
