@@ -11,7 +11,7 @@ export async function loadDynamicCatalog() {
   const [categoriesResult, fieldsResult, placesResult] = await Promise.all([
     supabase.from('categories').select('id,label,color,sort_order').order('sort_order'),
     supabase.from('detail_fields').select('key,label,default_value,sort_order').order('sort_order'),
-    supabase.from('places').select('id,name,recommendation,category_id,latitude,longitude,address,hours,price,best_for,rating,cover_url,tags,highlights,custom_details').eq('status', 'approved').order('submitted_at', { ascending: false }),
+    supabase.from('places').select('id,name,recommendation,category_id,latitude,longitude,address,hours,price,best_for,rating,cover_url,image_urls,tags,highlights,custom_details').eq('status', 'approved').order('submitted_at', { ascending: false }),
   ])
   const error = categoriesResult.error || fieldsResult.error || placesResult.error
   if (error) throw error
@@ -20,7 +20,8 @@ export async function loadDynamicCatalog() {
 
 export function mapDynamicPlace(row, categoriesById, detailFields) {
   const category = categoriesById[row.category_id]
-  const details = detailFields.map((field) => ({ key: field.key, label: field.label, value: row[field.key] || row[field.key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)] || field.default_value || '' }))
+  const details = detailFields.map((field) => ({ key: field.key, label: field.label, value: row[field.key] || row[field.key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)] || row.custom_details?.[field.key] || field.default_value || '' }))
+  const images = row.image_urls?.length ? row.image_urls : row.cover_url ? [row.cover_url] : []
   return {
     id: row.id,
     name: row.name,
@@ -31,7 +32,8 @@ export function mapDynamicPlace(row, categoriesById, detailFields) {
     coordinates: [row.longitude, row.latitude],
     address: row.address || '',
     rating: row.rating ?? '—',
-    cover: row.cover_url || '',
+    cover: row.cover_url || images[0] || '',
+    images,
     tags: row.tags || [],
     highlights: row.highlights || [],
     tip: row.custom_details?.tip || '',
@@ -117,6 +119,18 @@ export async function updatePlace(id, changes) {
 
 export async function deletePlace(id) {
   if (!supabase) throw new Error('Supabase 未配置')
+  const { data: existing, error: fetchError } = await supabase.from('places').select('image_urls,cover_url,custom_details').eq('id', id).single()
+  if (fetchError) throw fetchError
+  const pendingPaths = existing.custom_details?.images || []
+  const publicPaths = (existing.image_urls?.length ? existing.image_urls : existing.cover_url ? [existing.cover_url] : []).map(publicImagePathFromUrl).filter(Boolean)
+  if (pendingPaths.length) {
+    const { error } = await supabase.storage.from('submission-images').remove(pendingPaths)
+    if (error) throw error
+  }
+  if (publicPaths.length) {
+    const { error } = await supabase.storage.from('place-images').remove(publicPaths)
+    if (error) throw error
+  }
   const { error } = await supabase.from('places').delete().eq('id', id)
   if (error) throw error
 }
@@ -177,6 +191,7 @@ export async function createApprovedPlaceWithImages(payload, files = []) {
     id,
     status: 'approved',
     cover_url: publicUrls[0] || payload.cover_url || null,
+    image_urls: publicUrls,
     reviewed_at: new Date().toISOString(),
     reviewed_by: userResult.user.id,
   }).select('query_code').single()
@@ -188,7 +203,70 @@ export async function loadPendingImageUrls(paths = []) {
   if (!supabase || !paths.length) return []
   const { data, error } = await supabase.storage.from('submission-images').createSignedUrls(paths, 3600)
   if (error) throw error
-  return (data || []).map((item) => item.signedUrl).filter(Boolean)
+  return (data || []).map((item, index) => ({ path: item.path || paths[index], url: item.signedUrl })).filter((item) => item.url)
+}
+
+const publicImagePathFromUrl = (url) => {
+  if (typeof url !== 'string') return null
+  const marker = '/storage/v1/object/public/place-images/'
+  const markerIndex = url.indexOf(marker)
+  return markerIndex >= 0 ? decodeURIComponent(url.slice(markerIndex + marker.length)) : null
+}
+
+export async function removePendingImage(placeId, path) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data: existing, error: fetchError } = await supabase.from('places').select('custom_details').eq('id', placeId).single()
+  if (fetchError) throw fetchError
+  const imagePaths = existing.custom_details?.images || []
+  if (!imagePaths.includes(path)) throw new Error('待审核图片不存在')
+  const { error: storageError } = await supabase.storage.from('submission-images').remove([path])
+  if (storageError) throw storageError
+  const { error } = await supabase.from('places').update({ custom_details: { ...(existing.custom_details || {}), images: imagePaths.filter((item) => item !== path) } }).eq('id', placeId)
+  if (error) throw error
+}
+
+export async function uploadPublishedImages(placeId, files = []) {
+  if (!supabase || !files.length) return
+  const { data: existing, error: fetchError } = await supabase.from('places').select('image_urls,cover_url').eq('id', placeId).single()
+  if (fetchError) throw fetchError
+  const currentUrls = existing.image_urls?.length ? existing.image_urls : existing.cover_url ? [existing.cover_url] : []
+  if (currentUrls.length + files.length > 12) throw new Error('每个地点最多保留12张图片')
+  const newUrls = []
+  for (const file of files) {
+    const path = `${placeId}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, '_')}`
+    const { error } = await supabase.storage.from('place-images').upload(path, file, { upsert: false, contentType: file.type })
+    if (error) throw error
+    newUrls.push(supabase.storage.from('place-images').getPublicUrl(path).data.publicUrl)
+  }
+  const imageUrls = [...currentUrls, ...newUrls]
+  const { error } = await supabase.from('places').update({ image_urls: imageUrls, cover_url: existing.cover_url || imageUrls[0] || null }).eq('id', placeId)
+  if (error) throw error
+}
+
+export async function removePublishedImage(placeId, imageUrl) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data: existing, error: fetchError } = await supabase.from('places').select('image_urls,cover_url').eq('id', placeId).single()
+  if (fetchError) throw fetchError
+  const currentUrls = existing.image_urls?.length ? existing.image_urls : existing.cover_url ? [existing.cover_url] : []
+  if (!currentUrls.includes(imageUrl)) throw new Error('图片不存在')
+  const path = publicImagePathFromUrl(imageUrl)
+  if (path) {
+    const { error } = await supabase.storage.from('place-images').remove([path])
+    if (error) throw error
+  }
+  const imageUrls = currentUrls.filter((url) => url !== imageUrl)
+  const coverUrl = existing.cover_url === imageUrl ? imageUrls[0] || null : existing.cover_url
+  const { error } = await supabase.from('places').update({ image_urls: imageUrls, cover_url: coverUrl }).eq('id', placeId)
+  if (error) throw error
+}
+
+export async function setPublishedCover(placeId, imageUrl) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data: existing, error: fetchError } = await supabase.from('places').select('image_urls').eq('id', placeId).single()
+  if (fetchError) throw fetchError
+  if (!(existing.image_urls || []).includes(imageUrl)) throw new Error('图片不存在')
+  const { error } = await supabase.from('places').update({ cover_url: imageUrl }).eq('id', placeId)
+  if (error) throw error
 }
 
 export async function reviewPlace(id, status, rejectionReason = '', changes = {}) {
@@ -196,6 +274,7 @@ export async function reviewPlace(id, status, rejectionReason = '', changes = {}
   const { data: existing, error: fetchError } = await supabase.from('places').select('*').eq('id', id).single()
   if (fetchError) throw fetchError
   let coverUrl = existing.cover_url
+  let imageUrls = existing.image_urls?.length ? existing.image_urls : existing.cover_url ? [existing.cover_url] : []
   const imagePaths = existing.custom_details?.images || []
   if (status === 'approved' && imagePaths.length) {
     const publicUrls = []
@@ -208,9 +287,13 @@ export async function reviewPlace(id, status, rejectionReason = '', changes = {}
       publicUrls.push(supabase.storage.from('place-images').getPublicUrl(publicPath).data.publicUrl)
     }
     coverUrl = publicUrls[0] || coverUrl
+    imageUrls = publicUrls
   }
   const { data: userResult } = await supabase.auth.getUser()
-  const { data, error } = await supabase.from('places').update({ ...changes, status, cover_url: coverUrl, custom_details: { ...(existing.custom_details || {}), ...(status === 'approved' ? { images: undefined } : {}) }, rejection_reason: rejectionReason || null, reviewed_at: new Date().toISOString(), reviewed_by: userResult.user?.id || null }).eq('id', id).select().single()
+  const nextCustomDetails = { ...(existing.custom_details || {}), ...(changes.custom_details || {}) }
+  if (status === 'approved') delete nextCustomDetails.images
+  const { custom_details: _ignoredCustomDetails, ...plainChanges } = changes
+  const { data, error } = await supabase.from('places').update({ ...plainChanges, status, cover_url: coverUrl, image_urls: imageUrls, custom_details: nextCustomDetails, rejection_reason: rejectionReason || null, reviewed_at: new Date().toISOString(), reviewed_by: userResult.user?.id || null }).eq('id', id).select().single()
   if (error) throw error
   return data
 }

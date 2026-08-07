@@ -7,6 +7,7 @@ import { getSubmissionStatus, loadDynamicCatalog, mapDynamicPlace, submitPlace, 
 import SubmissionForm from './components/SubmissionForm'
 import SubmissionStatus from './components/SubmissionStatus'
 import AdminPanel from './components/AdminPanel'
+import ImageLightbox from './components/ImageLightbox'
 import './styles.css'
 
 function parseScalar(value) {
@@ -190,6 +191,7 @@ function App() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [drawer, setDrawer] = useState(false)
   const [mapStatus, setMapStatus] = useState('loading')
   const [debugEnabled, setDebugEnabled] = useState(false)
@@ -201,6 +203,7 @@ function App() {
   const [adminPreviewPlaces, setAdminPreviewPlaces] = useState([])
   const [adminFocus, setAdminFocus] = useState(null)
   const [contactOpen, setContactOpen] = useState(false)
+  const [lightboxImage, setLightboxImage] = useState('')
   const [guideOpen, setGuideOpen] = useState(false)
   const handlePendingChange = useCallback((items) => setAdminPreviewPlaces(items.map((item) => ({ id: item.id, name: item.name, pending: true, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }))), [])
   const handlePreviewPlace = useCallback((item) => setAdminFocus({ id: item.id, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }), [])
@@ -258,7 +261,7 @@ function App() {
     const query = search.trim().toLowerCase()
     return matchesCategory && (!query || `${place.name} ${place.address} ${place.tags.join(' ')}`.toLowerCase().includes(query))
   }), [activeCategory, search, catalogPlaces])
-  const selectPlace = (place) => { setSelected(place); setDrawer(false) }
+  const selectPlace = (place) => { setSelected(place); setSelectedImageIndex(0); setDrawer(false) }
   const createDraft = (coordinates) => {
     if (!debugEnabled && !adminAddEnabled) return
     const [longitude, latitude] = fromAmapCoordinates(coordinates)
@@ -276,6 +279,7 @@ function App() {
     })
   }
   const statusMessage = mapStatus === 'missing-key' ? '配置 VITE_AMAP_KEY 后显示高德底图' : mapStatus === 'error' ? '高德地图加载失败，请检查 Key 与域名白名单' : dataStatus === 'error' ? '动态地点加载失败，当前显示本地种子数据' : ''
+  const selectedImages = selected?.images?.length ? selected.images : selected?.cover ? [selected.cover] : []
 
   return <main className="app-shell">
     <div className="fullscreen-map"><AmapCanvas places={filtered} previewPlaces={adminPreviewPlaces} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled || adminAddEnabled} resetSignal={resetSignal} focusPlace={adminFocus} /><div className="map-fallback" aria-hidden="true" /></div>
@@ -289,9 +293,10 @@ function App() {
     {adminPanel && <AdminPanel adminAddEnabled={adminAddEnabled} onAdminAddPoint={setAdminAddEnabled} onClose={() => { setAdminPanel(false); setAdminAddEnabled(false); setAdminPreviewPlaces([]); setAdminFocus(null) }} onPendingChange={handlePendingChange} onPreviewPlace={handlePreviewPlace} onDataChanged={refreshCatalog} />}
     {draft && (supabaseConfigured ? <SubmissionForm draft={draft} setDraft={setDraft} categories={categoriesForUi} detailFields={catalogDetailFields} adminMode={adminAddEnabled} onSubmitted={() => refreshCatalog()} onClose={() => { setDraft(null); if (adminAddEnabled) setAdminAddEnabled(false) }} /> : <DebugForm draft={draft} setDraft={setDraft} onClose={() => setDraft(null)} />)}
     {drawer && <aside className="recommendation-drawer"><div className="drawer-handle" /><div className="drawer-heading"><div><p className="section-kicker">APPROVED PLACES</p><h2>附近值得去</h2></div><button className="drawer-close" onClick={() => setDrawer(false)} aria-label="关闭推荐">×</button></div><div className="drawer-filters"><span>{filtered.length} 个地点</span><span>管理员审核通过</span></div><div className="place-list">{filtered.map((place) => <article key={place.id} role="button" tabIndex="0" className={`place-card ${selected?.id === place.id ? 'selected' : ''} ${place.cover ? '' : 'no-image'}`} onClick={() => selectPlace(place)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectPlace(place) }}>{place.cover && <div className="place-image" style={{ backgroundImage: `url(${place.cover})` }}><span className="place-category" style={{ background: place.color }}>{place.categoryLabel}</span>{place.rating !== appConfig.defaultRating && <span className="rating">★ {place.rating}</span>}</div>}<div className="place-body"><div className="place-title"><h3>{place.name}</h3><span className="arrow">↗</span></div><p className="place-address">{place.address}</p><div className="tag-row">{place.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p className="quote">“{place.recommendation}”</p></div></article>)}</div></aside>}
-    {selected && <div className={`detail-drawer ${selected.cover ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selected.cover && <div className="drawer-image" style={{ backgroundImage: `url(${selected.cover})` }} />}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: selected.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
-    {contactOpen && <div className="author-modal-backdrop" role="presentation" onClick={() => setContactOpen(false)}><section className="author-card" role="dialog" aria-modal="true" aria-labelledby="author-dialog-title" onClick={(event) => event.stopPropagation()}><button className="author-close" onClick={() => setContactOpen(false)} aria-label="关闭联系作者">×</button><p className="section-kicker">CONTACT</p><h2 id="author-dialog-title">联系作者</h2><div className="author-detail"><span>QQ</span><strong>3393314989</strong></div><div className="author-detail"><span>个人主页</span><a href="https://florance.top" target="_blank" rel="noreferrer">florance.top ↗</a></div></section></div>}
+    {selected && <div className={`detail-drawer ${selectedImages.length ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selectedImages.length > 0 && <div className="detail-media"><button className="drawer-image image-zoom-trigger" style={{ backgroundImage: `url(${selectedImages[selectedImageIndex] || selectedImages[0]})` }} onClick={() => setLightboxImage(selectedImages[selectedImageIndex] || selectedImages[0])} aria-label="查看大图" />{selectedImages.length > 1 && <><button className="gallery-nav gallery-prev" onClick={() => setSelectedImageIndex((index) => (index - 1 + selectedImages.length) % selectedImages.length)} aria-label="上一张图片">‹</button><button className="gallery-nav gallery-next" onClick={() => setSelectedImageIndex((index) => (index + 1) % selectedImages.length)} aria-label="下一张图片">›</button><div className="gallery-dots">{selectedImages.map((image, index) => <button key={image} className={index === selectedImageIndex ? 'active' : ''} onClick={() => setSelectedImageIndex(index)} aria-label={`查看第${index + 1}张图片`} />)}</div></>}</div>}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: selected.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
+    {contactOpen && <div className="author-modal-backdrop" role="presentation" onClick={() => setContactOpen(false)}><section className="author-card" role="dialog" aria-modal="true" aria-labelledby="author-dialog-title" onClick={(event) => event.stopPropagation()}><button className="author-close" onClick={() => setContactOpen(false)} aria-label="关闭联系作者">×</button><p className="section-kicker">CONTACT</p><h2 id="author-dialog-title">联系作者</h2><div className="author-detail"><span>QQ</span><strong>3393314989</strong></div><div className="author-detail"><span>QQ 群</span><strong>1094990582</strong></div><div className="author-detail"><span>个人主页</span><a href="https://florance.top" target="_blank" rel="noreferrer">florance.top ↗</a></div></section></div>}
     {guideOpen && <div className="guide-modal-backdrop" role="presentation" onClick={closeGuide}><section className="guide-card" role="dialog" aria-modal="true" aria-labelledby="guide-dialog-title" onClick={(event) => event.stopPropagation()}><button className="author-close" onClick={closeGuide} aria-label="关闭使用引导">×</button><p className="section-kicker">QUICK START</p><h2 id="guide-dialog-title">三步开始逛赭山</h2><ol className="guide-steps"><li><b>1</b><div><strong>搜索或筛选</strong><span>输入店名，或选择分类快速找到目标地点。</span></div></li><li><b>2</b><div><strong>打开推荐</strong><span>点击地图圆点，查看学长分享的具体理由和详情。</span></div></li><li><b>3</b><div><strong>分享新发现</strong><span>点击加号投稿，在地图上选点并提交你的推荐。</span></div></li></ol><button className="copy-yaml guide-confirm" onClick={closeGuide}>开始探索</button></section></div>}
+    <ImageLightbox src={lightboxImage} alt={selected?.name || '地点图片'} onClose={() => setLightboxImage('')} />
   </main>
 }
 
