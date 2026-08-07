@@ -34,7 +34,7 @@ const loadTurnstile = () => {
   })
 }
 
-const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false }, ref) {
+const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false, renderOnMount = false }, ref) {
   const containerRef = useRef(null)
   const widgetIdRef = useRef(null)
   const onTokenRef = useRef(onToken)
@@ -56,6 +56,27 @@ const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute 
     onTokenRef.current?.(token)
   }, [])
 
+  const renderWidget = useCallback(async () => {
+    if (!siteKey) {
+      return null
+    }
+    const turnstile = await loadTurnstile()
+    if (widgetIdRef.current === null) {
+      widgetIdRef.current = turnstile.render(containerRef.current, {
+        sitekey: siteKey,
+        execution: 'execute',
+        appearance: autoExecute ? 'interaction-only' : 'always',
+        callback: handleToken,
+        'expired-callback': () => {
+          clearPreloadedToken()
+          onErrorRef.current?.('安全验证已过期，请重试')
+        },
+        'error-callback': () => onErrorRef.current?.('安全验证失败，请重试'),
+      })
+    }
+    return turnstile
+  }, [autoExecute, handleToken, siteKey])
+
   const execute = useCallback(async () => {
     if (!siteKey) {
       handleToken('development')
@@ -63,26 +84,19 @@ const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute 
     }
     setActive(true)
     try {
-      const turnstile = await loadTurnstile()
-      if (widgetIdRef.current === null) {
-        widgetIdRef.current = turnstile.render(containerRef.current, {
-          sitekey: siteKey,
-          execution: 'execute',
-          appearance: 'interaction-only',
-          callback: handleToken,
-          'expired-callback': () => {
-            clearPreloadedToken()
-            onErrorRef.current?.('安全验证已过期，请重试')
-          },
-          'error-callback': () => onErrorRef.current?.('安全验证失败，请重试'),
-        })
-      }
-      turnstile.execute(widgetIdRef.current)
+      const turnstile = await renderWidget()
+      if (turnstile && widgetIdRef.current !== null) turnstile.execute(widgetIdRef.current)
     } catch (error) {
       setActive(false)
       onErrorRef.current?.(error.message || '安全验证加载失败')
     }
-  }, [handleToken, siteKey])
+  }, [handleToken, renderWidget, siteKey])
+
+  useEffect(() => {
+    if (!renderOnMount) return undefined
+    renderWidget().then(() => setActive(true)).catch((error) => onErrorRef.current?.(error.message || '安全验证加载失败'))
+    return undefined
+  }, [renderOnMount, renderWidget])
 
   useEffect(() => {
     if (!autoExecute) return undefined
