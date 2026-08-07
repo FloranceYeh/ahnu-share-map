@@ -90,7 +90,14 @@ button { cursor:pointer; }
 .form-error { margin:0; padding:9px 10px; color:#a24e3f; background:#f8e8e3; border:1px solid #e9c6bc; border-radius:4px; font-size:11px; line-height:1.5; }
 .form-muted { margin:0; color:#89958b; font-size:11px; }
 .turnstile-box { min-height:65px; }
-.preloaded-turnstile { position:fixed; left:-20px; bottom:-20px; width:1px; height:1px; min-height:0; overflow:hidden; opacity:0; pointer-events:none; }
+.preloaded-turnstile { position:fixed; left:-360px; bottom:0; width:300px; height:65px; min-height:65px; overflow:hidden; opacity:0; pointer-events:none; }
+.turnstile-status { min-height:65px; display:flex; align-items:center; gap:12px; padding:10px 13px; color:#596a60; background:#fff; border:1px solid #d7ded5; border-radius:4px; }
+.turnstile-status-icon { width:29px; height:29px; display:grid; flex:0 0 auto; place-items:center; color:#fff; background:#8a968e; border-radius:50%; font-size:14px; font-weight:700; }
+.turnstile-status.verified { border-color:#a8c5ae; background:#f8fcf7; }
+.turnstile-status.verified .turnstile-status-icon { background:#3f8258; }
+.turnstile-status div { display:grid; gap:3px; }
+.turnstile-status strong { color:#344b3b; font-size:12px; }
+.turnstile-status small { color:#879288; font-size:9px; }
 .submission-success { display:grid; gap:13px; padding:24px 0; color:#5d6e62; font-size:12px; line-height:1.6; }.submission-success p { margin:0; }.submission-success strong { display:block; padding:15px; color:#295844; background:#edf3eb; border:1px dashed #9ab29d; text-align:center; letter-spacing:.18em; font-family:Consolas,monospace; font-size:21px; }.submission-success button { height:39px; color:#376047; background:#e7efe6; border:0; border-radius:4px; font-size:12px; }
 .status-result { display:grid; gap:8px; padding:14px; background:#edf3eb; border-radius:4px; }.status-result strong { color:#295844; font-size:15px; }.status-result p, .status-result small { margin:0; color:#68776d; font-size:11px; }
 .admin-add-trigger { width:100%; height:38px; margin:2px 0 10px; color:#fffaf0; background:#295844; border:0; border-radius:4px; font-size:12px; font-weight:600; }.admin-add-trigger.active { color:#fffaf0; background:#b36f43; }

@@ -49,7 +49,7 @@ const loadTurnstile = () => {
   })
 }
 
-const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false, displayOnly = false }, ref) {
+const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false }, ref) {
   const containerRef = useRef(null)
   const widgetIdRef = useRef(null)
   const [active, setActive] = useState(false)
@@ -74,7 +74,7 @@ const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute 
       if (disposed || !containerRef.current || widgetIdRef.current !== null) return
       widgetIdRef.current = turnstile.render(containerRef.current, {
         sitekey: siteKey,
-        ...((autoExecute || displayOnly) ? { execution: 'execute', appearance: autoExecute ? 'interaction-only' : 'always' } : {}),
+        ...(autoExecute ? { execution: 'execute', appearance: 'interaction-only' } : {}),
         callback: rememberToken,
         'expired-callback': () => {
           clearPreloadedToken()
@@ -87,12 +87,10 @@ const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute 
         setActive(true)
         refreshPreloadedToken = () => turnstile.execute(widgetIdRef.current)
         turnstile.execute(widgetIdRef.current)
-      } else if (displayOnly) {
-        setActive(true)
       }
     }).catch((error) => { if (!disposed) onError?.(error.message || '安全验证加载失败') })
     return () => { disposed = true }
-  }, [autoExecute, displayOnly, onError, onToken, siteKey])
+  }, [autoExecute, onError, onToken, siteKey])
 
   useEffect(() => () => {
     if (autoExecute) refreshPreloadedToken = null
