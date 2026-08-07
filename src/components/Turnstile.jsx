@@ -3,6 +3,12 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 const TOKEN_TTL_MS = 4 * 60 * 1000
 let cachedToken = ''
 let cachedAt = 0
+const tokenListeners = new Set()
+let refreshPreloadedToken = null
+
+const publishToken = (token) => {
+  tokenListeners.forEach((listener) => listener(token))
+}
 
 export const getPreloadedToken = () => {
   if (!cachedToken || Date.now() - cachedAt >= TOKEN_TTL_MS) return ''
@@ -12,7 +18,16 @@ export const getPreloadedToken = () => {
 export const clearPreloadedToken = () => {
   cachedToken = ''
   cachedAt = 0
+  publishToken('')
 }
+
+export const subscribePreloadedToken = (listener) => {
+  tokenListeners.add(listener)
+  listener(getPreloadedToken())
+  return () => tokenListeners.delete(listener)
+}
+
+export const refreshPreloadedTokenNow = () => refreshPreloadedToken?.()
 
 const loadTurnstile = () => {
   if (window.turnstile) return Promise.resolve(window.turnstile)
@@ -34,7 +49,7 @@ const loadTurnstile = () => {
   })
 }
 
-const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false }, ref) {
+const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute = false, displayOnly = false }, ref) {
   const containerRef = useRef(null)
   const widgetIdRef = useRef(null)
   const [active, setActive] = useState(false)
@@ -44,6 +59,7 @@ const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute 
     if (token) {
       cachedToken = token
       cachedAt = Date.now()
+      publishToken(token)
     }
     onToken?.(token)
   }
@@ -58,21 +74,29 @@ const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute 
       if (disposed || !containerRef.current || widgetIdRef.current !== null) return
       widgetIdRef.current = turnstile.render(containerRef.current, {
         sitekey: siteKey,
-        ...(autoExecute ? { execution: 'execute', appearance: 'interaction-only' } : {}),
+        ...((autoExecute || displayOnly) ? { execution: 'execute', appearance: autoExecute ? 'interaction-only' : 'always' } : {}),
         callback: rememberToken,
         'expired-callback': () => {
           clearPreloadedToken()
           onError?.('安全验证已过期，请重试')
+          if (autoExecute) window.setTimeout(() => turnstile.execute(widgetIdRef.current), 0)
         },
         'error-callback': () => onError?.('安全验证失败，请重试'),
       })
       if (autoExecute) {
         setActive(true)
+        refreshPreloadedToken = () => turnstile.execute(widgetIdRef.current)
         turnstile.execute(widgetIdRef.current)
+      } else if (displayOnly) {
+        setActive(true)
       }
     }).catch((error) => { if (!disposed) onError?.(error.message || '安全验证加载失败') })
     return () => { disposed = true }
-  }, [autoExecute, onError, onToken, siteKey])
+  }, [autoExecute, displayOnly, onError, onToken, siteKey])
+
+  useEffect(() => () => {
+    if (autoExecute) refreshPreloadedToken = null
+  }, [autoExecute])
 
   useImperativeHandle(ref, () => ({
     async execute() {
@@ -103,6 +127,7 @@ const Turnstile = forwardRef(function Turnstile({ onToken, onError, autoExecute 
       if (window.turnstile && widgetIdRef.current !== null) window.turnstile.reset(widgetIdRef.current)
       setActive(false)
       clearPreloadedToken()
+      if (autoExecute) refreshPreloadedToken = null
     },
   }), [onError, siteKey])
 
