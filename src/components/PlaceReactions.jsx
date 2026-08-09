@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { loadPlaceReactions, setPlaceReaction } from "../lib/supabase";
 
-const REACTIONS = [
-  { value: "like", emoji: "👍", label: "赞同" },
-  { value: "love", emoji: "❤️", label: "喜欢" },
-  { value: "fire", emoji: "🔥", label: "很棒" },
-  { value: "want_to_go", emoji: "👀", label: "想去" },
-];
-
-const emptySummary = () =>
+const emptySummary = (reactions = []) =>
   Object.fromEntries(
-    REACTIONS.map(({ value }) => [value, { count: 0, selected: false }]),
+    reactions.map(({ value }) => [value, { count: 0, selected: false }]),
   );
 
-function rowsToSummary(rows = []) {
-  const summary = emptySummary();
+function rowsToSummary(rows = [], reactions = []) {
+  const configuredReactions = rows.length
+    ? rows.map((row) => ({
+        value: row.reaction_value,
+        emoji: row.reaction_emoji,
+        label: row.reaction_label,
+      }))
+    : reactions;
+  const summary = emptySummary(configuredReactions);
   rows.forEach((row) => {
     if (summary[row.reaction_value])
       summary[row.reaction_value] = {
@@ -22,23 +22,28 @@ function rowsToSummary(rows = []) {
         selected: row.selected,
       };
   });
-  return summary;
+  return { configuredReactions, summary };
 }
 
-export default function PlaceReactions({ placeId }) {
-  const [summary, setSummary] = useState(emptySummary);
+export default function PlaceReactions({ placeId, reactions = [] }) {
+  const [configuredReactions, setConfiguredReactions] = useState(reactions);
+  const [summary, setSummary] = useState(() => emptySummary(reactions));
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
-    setSummary(emptySummary());
+    setConfiguredReactions(reactions);
+    setSummary(emptySummary(reactions));
     setLoading(true);
     setError("");
     loadPlaceReactions(placeId)
       .then((rows) => {
-        if (active) setSummary(rowsToSummary(rows));
+        if (!active) return;
+        const next = rowsToSummary(rows, reactions);
+        setConfiguredReactions(next.configuredReactions);
+        setSummary(next.summary);
       })
       .catch(() => {
         if (active) setError("响应暂时无法加载");
@@ -49,7 +54,7 @@ export default function PlaceReactions({ placeId }) {
     return () => {
       active = false;
     };
-  }, [placeId]);
+  }, [placeId, reactions]);
 
   const react = async (reaction) => {
     if (pending) return;
@@ -57,7 +62,12 @@ export default function PlaceReactions({ placeId }) {
     setPending(true);
     setError("");
     try {
-      setSummary(rowsToSummary(await setPlaceReaction(placeId, nextReaction)));
+      const next = rowsToSummary(
+        await setPlaceReaction(placeId, nextReaction),
+        reactions,
+      );
+      setConfiguredReactions(next.configuredReactions);
+      setSummary(next.summary);
     } catch {
       setError("响应未保存，请重试");
     } finally {
@@ -72,7 +82,7 @@ export default function PlaceReactions({ placeId }) {
         {error && <small role="status">{error}</small>}
       </div>
       <div className="reaction-list">
-        {REACTIONS.map(({ value, emoji, label }) => (
+        {configuredReactions.map(({ value, emoji, label }) => (
           <button
             key={value}
             type="button"

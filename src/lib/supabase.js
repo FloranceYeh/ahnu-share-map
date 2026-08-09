@@ -80,7 +80,8 @@ export async function compressImageToWebp(
 
 export async function loadDynamicCatalog() {
   if (!supabase) return null;
-  const [categoriesResult, fieldsResult, placesResult] = await Promise.all([
+  const [categoriesResult, fieldsResult, placesResult, reactionsResult] =
+    await Promise.all([
     supabase
       .from("categories")
       .select("id,label,color,sort_order")
@@ -96,14 +97,31 @@ export async function loadDynamicCatalog() {
       )
       .eq("status", "approved")
       .order("submitted_at", { ascending: false }),
+    supabase
+      .from("reaction_definitions")
+      .select("value,emoji,label,sort_order")
+      .order("sort_order"),
   ]);
   const error =
-    categoriesResult.error || fieldsResult.error || placesResult.error;
+    categoriesResult.error ||
+    fieldsResult.error ||
+    placesResult.error ||
+    reactionsResult.error;
   if (error) throw error;
+  const placeIds = (placesResult.data || []).map((place) => place.id);
+  const { data: reactionSummaries, error: reactionSummariesError } =
+    placeIds.length
+      ? await supabase.rpc("get_place_reaction_summaries", {
+          target_place_ids: placeIds,
+        })
+      : { data: [], error: null };
+  if (reactionSummariesError) throw reactionSummariesError;
   return {
     categories: categoriesResult.data,
     detailFields: fieldsResult.data,
     places: placesResult.data,
+    reactions: reactionsResult.data,
+    reactionSummaries: reactionSummaries || [],
   };
 }
 
@@ -302,12 +320,67 @@ export async function deletePlace(id) {
 
 export async function loadAdminCatalog() {
   if (!supabase) throw new Error("Supabase 未配置");
-  const [categories, fields] = await Promise.all([
+  const [categories, fields, reactions] = await Promise.all([
     supabase.from("categories").select("*").order("sort_order"),
     supabase.from("detail_fields").select("*").order("sort_order"),
+    supabase.from("reaction_definitions").select("*").order("sort_order"),
   ]);
-  if (categories.error || fields.error) throw categories.error || fields.error;
-  return { categories: categories.data || [], fields: fields.data || [] };
+  if (categories.error || fields.error || reactions.error)
+    throw categories.error || fields.error || reactions.error;
+  return {
+    categories: categories.data || [],
+    fields: fields.data || [],
+    reactions: reactions.data || [],
+  };
+}
+
+export async function loadPlaceReactionOptions(placeIds = []) {
+  if (!supabase || !placeIds.length) return [];
+  const { data, error } = await supabase
+    .from("place_reaction_options")
+    .select("place_id,reaction_value,is_enabled")
+    .in("place_id", placeIds);
+  if (error) throw error;
+  return data || [];
+}
+
+export async function saveReactionDefinition(reaction) {
+  if (!supabase) throw new Error("Supabase 未配置");
+  const { data, error } = await supabase
+    .from("reaction_definitions")
+    .upsert(reaction)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteReactionDefinition(value) {
+  if (!supabase) throw new Error("Supabase 未配置");
+  const { error } = await supabase
+    .from("reaction_definitions")
+    .delete()
+    .eq("value", value);
+  if (error) throw error;
+}
+
+export async function savePlaceReactionOption(
+  placeId,
+  reactionValue,
+  isEnabled,
+) {
+  if (!supabase) throw new Error("Supabase 未配置");
+  const { data, error } = await supabase
+    .from("place_reaction_options")
+    .upsert({
+      place_id: placeId,
+      reaction_value: reactionValue,
+      is_enabled: isEnabled,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function saveCategory(category) {

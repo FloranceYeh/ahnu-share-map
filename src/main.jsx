@@ -8,7 +8,9 @@ import React, {
 import { createRoot } from "react-dom/client";
 import categoryYamlText from "./data/categories.yml?raw";
 import appYamlText from "./data/app.yml?raw";
+import campusYamlText from "./data/campuses.yml?raw";
 import detailYamlText from "./data/details.yml?raw";
+import reactionYamlText from "./data/reactions.yml?raw";
 import {
   getSubmissionStatus,
   loadDynamicCatalog,
@@ -126,19 +128,21 @@ const fromAmapCoordinates = (coordinates) => {
   return [coordinates[0] * 2 - converted[0], coordinates[1] * 2 - converted[1]];
 };
 const CENTER = toAmapCoordinates(appConfig.mapCenter);
-const CAMPUSES = [
-  { id: "zheshan", name: "赭山校区", coordinates: CENTER },
-  {
-    id: "huajin",
-    name: "花津校区",
-    coordinates: toAmapCoordinates([118.373242, 31.287148]),
-  },
-  {
-    id: "tianmenshan",
-    name: "天门山校区",
-    coordinates: toAmapCoordinates([118.399542, 31.441666]),
-  },
-];
+const CAMPUSES = parseYaml(campusYamlText)
+  .filter(
+    (campus) =>
+      campus.id &&
+      campus.name &&
+      Array.isArray(campus.coordinates) &&
+      campus.coordinates.length === 2,
+  )
+  .map((campus) => ({
+    ...campus,
+    coordinates: toAmapCoordinates(campus.coordinates),
+  }));
+if (!CAMPUSES.length)
+  throw new Error("src/data/campuses.yml must contain at least one campus");
+const DEFAULT_CAMPUS_ID = CAMPUSES[0].id;
 
 const distanceBetween = ([lngA, latA], [lngB, latB]) => {
   const earthRadius = 6371000;
@@ -165,6 +169,9 @@ const categoryConfig = parseYaml(categoryYamlText)
 const categoryById = Object.fromEntries(
   categoryConfig.map((category) => [category.id, category]),
 );
+const reactionConfig = parseYaml(reactionYamlText)
+  .filter((item) => item.value && item.emoji && item.label)
+  .map((item, index) => ({ ...item, sort_order: item.sort_order ?? index }));
 const categories = [
   { id: "all", label: appConfig.allCategoryLabel },
   ...categoryConfig,
@@ -476,7 +483,7 @@ function DebugForm({ draft, setDraft, onClose }) {
 }
 
 function App() {
-  const [activeCampusId, setActiveCampusId] = useState("zheshan");
+  const [activeCampusId, setActiveCampusId] = useState(DEFAULT_CAMPUS_ID);
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -523,6 +530,7 @@ function App() {
   const [catalogPlaces, setCatalogPlaces] = useState(staticPlaces);
   const [catalogCategories, setCatalogCategories] = useState(categoryConfig);
   const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig);
+  const [catalogReactions, setCatalogReactions] = useState(reactionConfig);
   const [dataStatus, setDataStatus] = useState("static");
 
   useEffect(() => {
@@ -569,16 +577,31 @@ function App() {
       const nextCategoryById = Object.fromEntries(
         nextCategories.map((category) => [category.id, category]),
       );
+      const nextReactions = (catalog.reactions || []).map((reaction) => ({
+        value: reaction.value,
+        emoji: reaction.emoji,
+        label: reaction.label,
+        sort_order: reaction.sort_order,
+      }));
+      const summariesByPlace = (catalog.reactionSummaries || []).reduce(
+        (summaries, summary) => {
+          (summaries[summary.place_id] ||= []).push(summary);
+          return summaries;
+        },
+        {},
+      );
       setCatalogCategories(
         nextCategories.length ? nextCategories : categoryConfig,
       );
       setCatalogDetailFields(nextFields.length ? nextFields : detailConfig);
+      setCatalogReactions(nextReactions.length ? nextReactions : reactionConfig);
       setCatalogPlaces(
         (catalog.places || []).map((place) => {
           const mapped = mapDynamicPlace(place, nextCategoryById, nextFields);
           return {
             ...mapped,
             coordinates: toAmapCoordinates(mapped.coordinates),
+            reactions: summariesByPlace[place.id] || [],
           };
         }),
       );
@@ -906,6 +929,15 @@ function App() {
                     ))}
                   </div>
                   <p className="quote">“{place.recommendation}”</p>
+                  {place.reactions?.length > 0 && (
+                    <div className="place-reaction-summary" aria-label="表情响应">
+                      {place.reactions.map((reaction) => (
+                        <span key={reaction.reaction_value}>
+                          {reaction.reaction_emoji} {reaction.reaction_count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </article>
             ))}
@@ -1006,7 +1038,11 @@ function App() {
                 <p>{selected.recommendation}</p>
               </div>
             </div>
-            <PlaceReactions key={selected.id} placeId={selected.id} />
+            <PlaceReactions
+              key={selected.id}
+              placeId={selected.id}
+              reactions={catalogReactions}
+            />
             <div className="tip-line">
               <span>TIP</span>
               {selected.tip}

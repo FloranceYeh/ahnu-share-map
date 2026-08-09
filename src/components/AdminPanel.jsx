@@ -3,14 +3,18 @@ import {
   deleteCategory,
   deleteDetailField,
   deletePlace,
+  deleteReactionDefinition,
   loadAdminCatalog,
   loadPendingImageUrls,
+  loadPlaceReactionOptions,
   loadPlacesByStatus,
   removePendingImage,
   removePublishedImage,
   reviewPlace,
   saveCategory,
   saveDetailField,
+  savePlaceReactionOption,
+  saveReactionDefinition,
   setPublishedCover,
   signInAdmin,
   signOutAdmin,
@@ -33,6 +37,13 @@ const blankField = () => ({
   sort_order: 0,
   is_active: true,
 });
+const blankReaction = () => ({
+  value: "",
+  emoji: "",
+  label: "",
+  sort_order: 0,
+  is_active: true,
+});
 
 export default function AdminPanel({
   onClose,
@@ -50,10 +61,13 @@ export default function AdminPanel({
   const [published, setPublished] = useState([]);
   const [categories, setCategories] = useState([]);
   const [fields, setFields] = useState([]);
+  const [reactions, setReactions] = useState([]);
+  const [placeReactionOptions, setPlaceReactionOptions] = useState({});
   const [edits, setEdits] = useState({});
   const [reason, setReason] = useState({});
   const [newCategory, setNewCategory] = useState(blankCategory());
   const [newField, setNewField] = useState(blankField());
+  const [newReaction, setNewReaction] = useState(blankReaction());
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [imagePreview, setImagePreview] = useState("");
@@ -64,18 +78,26 @@ export default function AdminPanel({
       loadPlacesByStatus("approved"),
       loadAdminCatalog(),
     ]);
-    const withImages = await Promise.all(
+    const [withImages, reactionOptions] = await Promise.all([
       nextPending.map(async (item) => ({
         ...item,
         imageUrls: await loadPendingImageUrls(
           item.custom_details?.images || [],
         ),
       })),
-    );
+      loadPlaceReactionOptions(nextPublished.map((item) => item.id)),
+    ]);
+    const optionsByPlace = reactionOptions.reduce((result, option) => {
+      (result[option.place_id] ||= {})[option.reaction_value] =
+        option.is_enabled;
+      return result;
+    }, {});
     setPending(withImages);
     setPublished(nextPublished);
     setCategories(catalog.categories);
     setFields(catalog.fields);
+    setReactions(catalog.reactions);
+    setPlaceReactionOptions(optionsByPlace);
   };
   const login = async () => {
     setBusy(true);
@@ -249,6 +271,80 @@ export default function AdminPanel({
       onDataChanged?.();
     } catch (deleteError) {
       setError(deleteError.message || "字段删除失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveNewReaction = async () => {
+    if (!newReaction.value || !newReaction.emoji || !newReaction.label) return;
+    setBusy(true);
+    setError("");
+    try {
+      await saveReactionDefinition({
+        ...newReaction,
+        value: newReaction.value.trim(),
+        emoji: newReaction.emoji.trim(),
+        label: newReaction.label.trim(),
+        sort_order: Number(newReaction.sort_order) || 0,
+      });
+      setNewReaction(blankReaction());
+      await loadAll();
+      onDataChanged?.();
+    } catch (saveError) {
+      setError(saveError.message || "表情保存失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveExistingReaction = async (reaction) => {
+    setBusy(true);
+    setError("");
+    try {
+      await saveReactionDefinition({
+        ...reaction,
+        emoji: reaction.emoji.trim(),
+        label: reaction.label.trim(),
+        sort_order: Number(reaction.sort_order) || 0,
+      });
+      await loadAll();
+      onDataChanged?.();
+    } catch (saveError) {
+      setError(saveError.message || "表情保存失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const removeReaction = async (reaction) => {
+    if (!window.confirm(`确定删除表情“${reaction.label}”吗？`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      await deleteReactionDefinition(reaction.value);
+      await loadAll();
+      onDataChanged?.();
+    } catch (deleteError) {
+      setError(
+        deleteError.message || "该表情已有响应或地点设置，无法删除",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const togglePlaceReaction = async (placeId, reactionValue, isEnabled) => {
+    setBusy(true);
+    setError("");
+    try {
+      await savePlaceReactionOption(placeId, reactionValue, isEnabled);
+      setPlaceReactionOptions((current) => ({
+        ...current,
+        [placeId]: {
+          ...(current[placeId] || {}),
+          [reactionValue]: isEnabled,
+        },
+      }));
+      onDataChanged?.();
+    } catch (saveError) {
+      setError(saveError.message || "地点表情设置保存失败");
     } finally {
       setBusy(false);
     }
@@ -463,6 +559,39 @@ export default function AdminPanel({
         {Number(placeValue(item, "longitude") || item.longitude).toFixed(6)} ·
         点击卡片定位
       </small>
+      {publishedMode && reactions.some((reaction) => reaction.is_active) && (
+        <div
+          className="admin-place-reactions"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <span>此地点可用表情</span>
+          <div>
+            {reactions
+              .filter((reaction) => reaction.is_active)
+              .map((reaction) => {
+                const isEnabled =
+                  placeReactionOptions[item.id]?.[reaction.value] ?? true;
+                return (
+                  <label key={reaction.value} title={reaction.label}>
+                    <input
+                      type="checkbox"
+                      checked={isEnabled}
+                      disabled={busy}
+                      onChange={(event) =>
+                        togglePlaceReaction(
+                          item.id,
+                          reaction.value,
+                          event.target.checked,
+                        )
+                      }
+                    />
+                    <span aria-hidden="true">{reaction.emoji}</span>
+                  </label>
+                );
+              })}
+          </div>
+        </div>
+      )}
       {item.custom_details?.duplicate_candidates?.length > 0 && (
         <p className="duplicate-warning">
           疑似重复：
@@ -571,6 +700,7 @@ export default function AdminPanel({
               ["published", `已发布 ${published.length}`],
               ["categories", "分类"],
               ["fields", "详情字段"],
+              ["reactions", "表情"],
             ].map(([id, label]) => (
               <button
                 className={tab === id ? "active" : ""}
@@ -734,6 +864,114 @@ export default function AdminPanel({
                   <button
                     className="danger-button"
                     onClick={() => removeField(field)}
+                    disabled={busy}
+                  >
+                    删除
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {tab === "reactions" && (
+            <div className="config-list">
+              <div className="reaction-config-row new-row">
+                <input
+                  placeholder="key"
+                  value={newReaction.value}
+                  onChange={(event) =>
+                    setNewReaction({
+                      ...newReaction,
+                      value: event.target.value,
+                    })
+                  }
+                />
+                <input
+                  placeholder="表情"
+                  value={newReaction.emoji}
+                  onChange={(event) =>
+                    setNewReaction({
+                      ...newReaction,
+                      emoji: event.target.value,
+                    })
+                  }
+                />
+                <input
+                  placeholder="名称"
+                  value={newReaction.label}
+                  onChange={(event) =>
+                    setNewReaction({
+                      ...newReaction,
+                      label: event.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="number"
+                  aria-label="排序"
+                  value={newReaction.sort_order}
+                  onChange={(event) =>
+                    setNewReaction({
+                      ...newReaction,
+                      sort_order: event.target.value,
+                    })
+                  }
+                />
+                <button onClick={saveNewReaction} disabled={busy}>
+                  新增
+                </button>
+              </div>
+              {reactions.map((reaction) => (
+                <div className="reaction-config-row" key={reaction.value}>
+                  <input value={reaction.value} disabled />
+                  <input
+                    value={reaction.emoji}
+                    aria-label={`${reaction.label}的表情`}
+                    onChange={(event) =>
+                      setReactions((items) =>
+                        items.map((item) =>
+                          item.value === reaction.value
+                            ? { ...item, emoji: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                  <input
+                    value={reaction.label}
+                    aria-label={`${reaction.value}的名称`}
+                    onChange={(event) =>
+                      setReactions((items) =>
+                        items.map((item) =>
+                          item.value === reaction.value
+                            ? { ...item, label: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                  <input
+                    type="number"
+                    aria-label={`${reaction.label}的排序`}
+                    value={reaction.sort_order}
+                    onChange={(event) =>
+                      setReactions((items) =>
+                        items.map((item) =>
+                          item.value === reaction.value
+                            ? { ...item, sort_order: event.target.value }
+                            : item,
+                        ),
+                      )
+                    }
+                  />
+                  <button
+                    onClick={() => saveExistingReaction(reaction)}
+                    disabled={busy}
+                  >
+                    保存
+                  </button>
+                  <button
+                    className="danger-button"
+                    onClick={() => removeReaction(reaction)}
                     disabled={busy}
                   >
                     删除

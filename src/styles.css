@@ -490,6 +490,20 @@ button {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
+.place-reaction-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+.place-reaction-summary span {
+  padding: 2px 5px;
+  color: #65766b;
+  background: #f1f4ed;
+  border-radius: 9px;
+  font-size: 9px;
+  line-height: 1.2;
+}
 .empty-state {
   padding: 48px 16px;
   text-align: center;
@@ -1694,6 +1708,68 @@ button {
 .config-row.new-row {
   padding-bottom: 9px;
   border-bottom: 1px solid #dce4da;
+}
+.reaction-config-row {
+  display: grid;
+  grid-template-columns: minmax(48px, 0.8fr) 42px minmax(58px, 1fr) 42px 43px 43px;
+  gap: 5px;
+  align-items: center;
+}
+.reaction-config-row input {
+  min-width: 0;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid #d7ded5;
+  border-radius: 3px;
+  font-size: 10px;
+}
+.reaction-config-row button {
+  height: 32px;
+  color: #376047;
+  background: #e7efe6;
+  border: 0;
+  border-radius: 3px;
+  font-size: 10px;
+}
+.reaction-config-row.new-row {
+  grid-template-columns: minmax(48px, 0.8fr) 42px minmax(58px, 1fr) 42px 43px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #dce4da;
+}
+.admin-place-reactions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #e4e8e0;
+}
+.admin-place-reactions > span {
+  color: #89958b;
+  font-size: 9px;
+}
+.admin-place-reactions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.admin-place-reactions label {
+  display: grid;
+  width: 28px;
+  height: 26px;
+  place-items: center;
+  background: #f1f4ed;
+  border: 1px solid #dbe2d8;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.admin-place-reactions input {
+  position: absolute;
+  opacity: 0;
+}
+.admin-place-reactions label:has(input:not(:checked)) {
+  opacity: 0.35;
 }
 .danger-button {
   color: #a24e3f !important;

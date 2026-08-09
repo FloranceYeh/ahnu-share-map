@@ -1,0 +1,10 @@
+# 校区切换项。坐标遵循 app.yml 的 coordinateSystem 配置。
+- id: zheshan
+  name: 赭山校区
+  coordinates: [118.3697, 31.3378]
+- id: huajin
+  name: 花津校区
+  coordinates: [118.373242, 31.287148]
+- id: tianmenshan
+  name: 天门山校区
+  coordinates: [118.399542, 31.441666]
