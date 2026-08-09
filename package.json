@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
     "@vitejs/plugin-react": "latest",
+    "nodemailer": "^9.0.5",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"

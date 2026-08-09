@@ -85,6 +85,36 @@ function normalizePayload(payload: unknown, submissionId: string | null) {
   }
 }
 
+async function notifyAdmins(admin: ReturnType<typeof createClient>, submission: ReturnType<typeof normalizePayload>, queryCode: string) {
+  const notificationUrl = Deno.env.get('ADMIN_NOTIFICATION_URL')
+  const notificationSecret = Deno.env.get('ADMIN_NOTIFICATION_SECRET')
+  if (!notificationUrl || !notificationSecret) return
+
+  try {
+    const { data: admins, error } = await admin.from('admin_users').select('email')
+    if (error) throw error
+    const recipients = (admins || []).map((item) => item.email).filter((email): email is string => typeof email === 'string')
+    if (!recipients.length) return
+    const response = await fetch(notificationUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${notificationSecret}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipients,
+        queryCode,
+        submission: {
+          name: submission.name,
+          recommendation: submission.recommendation,
+          address: submission.address,
+          coordinates: [submission.longitude, submission.latitude],
+        },
+      }),
+    })
+    if (!response.ok) console.error('admin notification endpoint failed', response.status)
+  } catch (error) {
+    console.error('admin notification request failed', error)
+  }
+}
+
 Deno.serve(async (request) => {
   const origin = request.headers.get('origin')
   if (origin && !allowedOrigins.has(origin)) return json({ error: '请求来源不被允许' }, 403, origin)
@@ -137,6 +167,7 @@ Deno.serve(async (request) => {
     }
     const { data, error } = await admin.from('places').insert(insertPayload).select('query_code').single()
     if (error) throw error
+    await notifyAdmins(admin, normalizedPayload, data.query_code)
     return json({ queryCode: data.query_code }, 200, origin)
   } catch (error) {
     const message = error instanceof Error ? error.message : ''

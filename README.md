@@ -28,6 +28,36 @@ insert into public.admin_users(user_id, email)
 select id, email from auth.users where email = '你的管理员邮箱';
 ```
 
+`admin_users` 支持多个管理员。每新增一个管理员账号，执行同一条 SQL 并替换邮箱即可；每位管理员都会收到新投稿通知。
+
+## 管理员邮件通知
+
+新投稿写入成功后，`submit-place` 会读取 `admin_users` 中的全部邮箱，并调用 Vercel 的 `/api/notify-admins` 通过 QQ 邮箱 SMTP 发送通知。通知发送失败不会影响投稿写入。
+
+在 Vercel 项目环境变量中配置：
+
+```bash
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_USER=你的QQ邮箱
+SMTP_PASS=QQ邮箱SMTP授权码
+SMTP_FROM=你的QQ邮箱
+ADMIN_NOTIFICATION_SECRET=随机长密钥
+```
+
+在 Supabase Edge Function secrets 中配置相同的通知密钥与 Vercel 端点地址：
+
+```bash
+supabase secrets set ADMIN_NOTIFICATION_URL=https://你的域名/api/notify-admins
+supabase secrets set ADMIN_NOTIFICATION_SECRET=与Vercel相同的随机长密钥
+```
+
+QQ 邮箱需要先在邮箱设置中开启 SMTP 服务，并使用 SMTP 授权码，而不是登录密码。修改后重新部署 Edge Function：
+
+```bash
+supabase functions deploy submit-place
+```
+
 ## 数据流
 
 - 匿名投稿统一经过 `submit-place` Edge Function，通过 Turnstile 和每日 5 次限额后写入 `pending`。
