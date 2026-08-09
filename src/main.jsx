@@ -622,7 +622,7 @@ function App() {
     ],
     [catalogCategories],
   );
-  const filtered = useMemo(
+  const visiblePlaces = useMemo(
     () =>
       catalogPlaces
         .filter((place) => {
@@ -636,7 +636,12 @@ function App() {
                 .toLowerCase()
                 .includes(query))
           );
-        })
+        }),
+    [activeCategory, search, catalogPlaces],
+  );
+  const filtered = useMemo(
+    () =>
+      visiblePlaces
         .map((place, index) => ({
           place,
           index,
@@ -644,14 +649,14 @@ function App() {
         }))
         .sort((a, b) => a.distance - b.distance || a.index - b.index)
         .map(({ place }) => place),
-    [activeCategory, search, catalogPlaces, mapCenter],
+    [visiblePlaces, mapCenter],
   );
-  const selectPlace = (place) => {
+  const selectPlace = useCallback((place) => {
     setSelected(place);
     setSelectedImageIndex(0);
     setNavigationMenuOpen(false);
     setDrawer(false);
-  };
+  }, []);
   const createDraft = (coordinates) => {
     if (!debugEnabled && !adminAddEnabled) return;
     const [longitude, latitude] = fromAmapCoordinates(coordinates);
@@ -718,7 +723,7 @@ function App() {
     <main className="app-shell">
       <div className="fullscreen-map">
         <AmapCanvas
-          places={filtered}
+          places={visiblePlaces}
           previewPlaces={adminPreviewPlaces}
           selected={selected}
           onSelect={selectPlace}
