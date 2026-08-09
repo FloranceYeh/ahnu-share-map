@@ -196,7 +196,7 @@ function DebugForm({ draft, setDraft, onClose }) {
   return <aside className="debug-panel">
     <div className="drawer-heading"><div><p className="section-kicker">MAP DEBUGGER</p><h2>新增推荐点</h2></div><button className="drawer-close" onClick={onClose} aria-label="关闭录点表单">×</button></div>
     <div className="debug-form">
-      <div className="coordinate-fields"><label><span>纬度</span><input value={draft.latitude} onChange={(event) => update('latitude', event.target.value)} /></label><label><span>经度</span><input value={draft.longitude} onChange={(event) => update('longitude', event.target.value)} /></label></div>
+      <div className="coordinate-fields"><label><span>经度</span><input value={draft.longitude} onChange={(event) => update('longitude', event.target.value)} /></label><label><span>纬度</span><input value={draft.latitude} onChange={(event) => update('latitude', event.target.value)} /></label></div>
       <label><span>地名 *</span><input value={draft.name} onChange={(event) => update('name', event.target.value)} autoFocus /></label>
       <label><span>推荐理由 *</span><textarea value={draft.recommendation} onChange={(event) => update('recommendation', event.target.value)} rows="4" /></label>
       <label><span>分类</span><select value={draft.category} onChange={(event) => update('category', event.target.value)}>{categoryConfig.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}</select></label>
