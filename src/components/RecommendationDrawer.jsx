@@ -66,13 +66,17 @@ export default function RecommendationDrawer({
                 ))}
               </div>
               <p className="quote">“{place.recommendation}”</p>
-              {place.reactions?.length > 0 && (
+              {place.reactions?.some(
+                (reaction) => Number(reaction.reaction_count) > 0,
+              ) && (
                 <div className="place-reaction-summary" aria-label="表情响应">
-                  {place.reactions.map((reaction) => (
+                  {place.reactions
+                    .filter((reaction) => Number(reaction.reaction_count) > 0)
+                    .map((reaction) => (
                     <span key={reaction.reaction_value}>
                       {reaction.reaction_emoji} {reaction.reaction_count}
                     </span>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
