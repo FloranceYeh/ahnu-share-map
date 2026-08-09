@@ -99,6 +99,16 @@ button { cursor:pointer; }
 .place-card.no-image .quote { -webkit-line-clamp:3; }
 .detail-drawer.no-image { display:block; }
 .detail-drawer.no-image .drawer-content { padding-right:48px; }
+.place-reactions { margin-top:13px; padding-top:11px; border-top:1px solid #e4e8e0; }
+.reaction-heading { min-height:16px; display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; color:#7c8b80; font-size:10px; }
+.reaction-heading small { color:#a24e3f; font-size:9px; }
+.reaction-list { display:flex; flex-wrap:wrap; gap:6px; }
+.reaction-list button { min-width:53px; height:31px; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 8px; color:#65766b; background:#f1f4ed; border:1px solid #dbe2d8; border-radius:16px; transition:.16s; }
+.reaction-list button:hover:not(:disabled) { border-color:#91aa96; background:#e8efe6; transform:translateY(-1px); }
+.reaction-list button.selected { color:#fffaf0; background:#295844; border-color:#295844; }
+.reaction-list button:disabled { cursor:default; opacity:.58; }
+.reaction-list button span { font-size:15px; line-height:1; }
+.reaction-list button b { min-width:8px; font-size:10px; font-weight:600; }
 .map-stamp { border-top:0; border-right:0; border-bottom:0; text-align:left; transition:transform .18s, box-shadow .18s; }
 .map-stamp:hover { transform:translateY(-1px); box-shadow:0 9px 22px rgba(42,60,48,.18); }
 

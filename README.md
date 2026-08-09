@@ -13,7 +13,7 @@ npm run dev
 
 ## Supabase 初始化
 
-1. 在 Supabase 项目中执行 `supabase/migrations/001_initial.sql`、`002_seed_catalog.sql`、`003_security_hardening.sql` 和 `004_place_images.sql`。
+1. 按编号顺序执行 `supabase/migrations` 中的全部 SQL 迁移（当前为 `001`–`005`）。
 2. 部署 Edge Function：`supabase functions deploy submit-place`。
 3. 配置 Turnstile Function secret：
 
