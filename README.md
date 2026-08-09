@@ -1,5 +1,7 @@
 # 安师生活地图
 
+本项目采用 [GNU GPLv3](./LICENSE) 开源许可证。
+
 ## 本地配置
 
 复制 `.env.example` 为 `.env`，填写高德、Supabase 和 Turnstile 的前端变量。
