@@ -37,7 +37,6 @@ select id, email from auth.users where email = '你的管理员邮箱';
 在 Vercel 项目环境变量中配置：
 
 ```bash
-SMTP_HOST=smtp.qq.com
 SMTP_PORT=465
 SMTP_USER=你的QQ邮箱
 SMTP_PASS=QQ邮箱SMTP授权码

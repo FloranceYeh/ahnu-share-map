@@ -15,5 +15,8 @@
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
+  },
+  "devDependencies": {
+    "supabase": "^2.113.0"
   }
 }
