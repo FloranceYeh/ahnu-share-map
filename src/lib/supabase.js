@@ -344,6 +344,15 @@ export async function loadPlaceReactionOptions(placeIds = []) {
   return data || [];
 }
 
+export async function loadPlaceReactionSummaries(placeIds = []) {
+  if (!supabase || !placeIds.length) return [];
+  const { data, error } = await supabase.rpc("get_place_reaction_summaries", {
+    target_place_ids: placeIds,
+  });
+  if (error) throw error;
+  return data || [];
+}
+
 export async function saveReactionDefinition(reaction) {
   if (!supabase) throw new Error("Supabase 未配置");
   const { data, error } = await supabase
@@ -381,6 +390,20 @@ export async function savePlaceReactionOption(
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function savePlaceReactionCount(
+  placeId,
+  reactionValue,
+  count,
+) {
+  if (!supabase) throw new Error("Supabase 未配置");
+  const { error } = await supabase.rpc("set_place_reaction_count", {
+    target_place_id: placeId,
+    target_reaction: reactionValue,
+    target_count: count,
+  });
+  if (error) throw error;
 }
 
 export async function saveCategory(category) {

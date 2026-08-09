@@ -7,12 +7,14 @@ import {
   loadAdminCatalog,
   loadPendingImageUrls,
   loadPlaceReactionOptions,
+  loadPlaceReactionSummaries,
   loadPlacesByStatus,
   removePendingImage,
   removePublishedImage,
   reviewPlace,
   saveCategory,
   saveDetailField,
+  savePlaceReactionCount,
   savePlaceReactionOption,
   saveReactionDefinition,
   setPublishedCover,
@@ -63,6 +65,8 @@ export default function AdminPanel({
   const [fields, setFields] = useState([]);
   const [reactions, setReactions] = useState([]);
   const [placeReactionOptions, setPlaceReactionOptions] = useState({});
+  const [placeReactionSummaries, setPlaceReactionSummaries] = useState({});
+  const [reactionCountEdits, setReactionCountEdits] = useState({});
   const [edits, setEdits] = useState({});
   const [reason, setReason] = useState({});
   const [newCategory, setNewCategory] = useState(blankCategory());
@@ -78,7 +82,7 @@ export default function AdminPanel({
       loadPlacesByStatus("approved"),
       loadAdminCatalog(),
     ]);
-    const [withImages, reactionOptions] = await Promise.all([
+    const [withImages, reactionOptions, reactionSummaries] = await Promise.all([
       nextPending.map(async (item) => ({
         ...item,
         imageUrls: await loadPendingImageUrls(
@@ -86,10 +90,15 @@ export default function AdminPanel({
         ),
       })),
       loadPlaceReactionOptions(nextPublished.map((item) => item.id)),
+      loadPlaceReactionSummaries(nextPublished.map((item) => item.id)),
     ]);
     const optionsByPlace = reactionOptions.reduce((result, option) => {
       (result[option.place_id] ||= {})[option.reaction_value] =
         option.is_enabled;
+      return result;
+    }, {});
+    const summariesByPlace = reactionSummaries.reduce((result, summary) => {
+      (result[summary.place_id] ||= {})[summary.reaction_value] = summary;
       return result;
     }, {});
     setPending(withImages);
@@ -98,6 +107,7 @@ export default function AdminPanel({
     setFields(catalog.fields);
     setReactions(catalog.reactions);
     setPlaceReactionOptions(optionsByPlace);
+    setPlaceReactionSummaries(summariesByPlace);
   };
   const login = async () => {
     setBusy(true);
@@ -349,6 +359,39 @@ export default function AdminPanel({
       setBusy(false);
     }
   };
+  const reactionCountKey = (placeId, reactionValue) =>
+    `${placeId}:${reactionValue}`;
+  const placeReactionCount = (placeId, reactionValue) => {
+    const key = reactionCountKey(placeId, reactionValue);
+    return (
+      reactionCountEdits[key] ??
+      placeReactionSummaries[placeId]?.[reactionValue]?.reaction_count ??
+      0
+    );
+  };
+  const saveReactionCount = async (placeId, reactionValue) => {
+    const key = reactionCountKey(placeId, reactionValue);
+    const count = Math.max(
+      0,
+      Math.floor(Number(placeReactionCount(placeId, reactionValue)) || 0),
+    );
+    setBusy(true);
+    setError("");
+    try {
+      await savePlaceReactionCount(placeId, reactionValue, count);
+      setReactionCountEdits((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+      await loadAll();
+      onDataChanged?.();
+    } catch (saveError) {
+      setError(saveError.message || "响应数量保存失败");
+    } finally {
+      setBusy(false);
+    }
+  };
   const removePendingImageFromPlace = async (item, path) => {
     if (!window.confirm("确定删除这张待审核图片吗？")) return;
     setBusy(true);
@@ -565,28 +608,56 @@ export default function AdminPanel({
           onClick={(event) => event.stopPropagation()}
         >
           <span>此地点可用表情</span>
-          <div>
+          <div className="admin-place-reaction-options">
             {reactions
               .filter((reaction) => reaction.is_active)
               .map((reaction) => {
                 const isEnabled =
                   placeReactionOptions[item.id]?.[reaction.value] ?? true;
                 return (
-                  <label key={reaction.value} title={reaction.label}>
+                  <div
+                    className="admin-place-reaction-option"
+                    key={reaction.value}
+                  >
+                    <label title={reaction.label}>
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        disabled={busy}
+                        onChange={(event) =>
+                          togglePlaceReaction(
+                            item.id,
+                            reaction.value,
+                            event.target.checked,
+                          )
+                        }
+                      />
+                      <span aria-hidden="true">{reaction.emoji}</span>
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={isEnabled}
-                      disabled={busy}
+                      type="number"
+                      min="0"
+                      aria-label={`${reaction.label}响应数量`}
+                      value={placeReactionCount(item.id, reaction.value)}
+                      disabled={busy || !isEnabled}
                       onChange={(event) =>
-                        togglePlaceReaction(
-                          item.id,
-                          reaction.value,
-                          event.target.checked,
-                        )
+                        setReactionCountEdits((current) => ({
+                          ...current,
+                          [reactionCountKey(item.id, reaction.value)]:
+                            event.target.value,
+                        }))
                       }
                     />
-                    <span aria-hidden="true">{reaction.emoji}</span>
-                  </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        saveReactionCount(item.id, reaction.value)
+                      }
+                      disabled={busy || !isEnabled}
+                    >
+                      保存
+                    </button>
+                  </div>
                 );
               })}
           </div>

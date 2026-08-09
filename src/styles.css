@@ -1749,12 +1749,17 @@ button {
   color: #89958b;
   font-size: 9px;
 }
-.admin-place-reactions > div {
-  display: flex;
-  flex-wrap: wrap;
+.admin-place-reaction-options {
+  display: grid;
   gap: 4px;
 }
-.admin-place-reactions label {
+.admin-place-reaction-option {
+  display: grid;
+  grid-template-columns: 28px 48px 34px;
+  gap: 4px;
+  align-items: center;
+}
+.admin-place-reaction-option label {
   display: grid;
   width: 28px;
   height: 26px;
@@ -1764,12 +1769,30 @@ button {
   border-radius: 3px;
   cursor: pointer;
 }
-.admin-place-reactions input {
+.admin-place-reaction-option label input {
   position: absolute;
   opacity: 0;
 }
-.admin-place-reactions label:has(input:not(:checked)) {
+.admin-place-reaction-option label:has(input:not(:checked)) {
   opacity: 0.35;
+}
+.admin-place-reaction-option > input,
+.admin-place-reaction-option button {
+  height: 26px;
+  min-width: 0;
+  padding: 0 4px;
+  border: 1px solid #d7ded5;
+  border-radius: 3px;
+  font-size: 9px;
+}
+.admin-place-reaction-option > input {
+  color: #26372d;
+  background: #fffdf8;
+}
+.admin-place-reaction-option button {
+  color: #376047;
+  background: #e7efe6;
+  border: 0;
 }
 .danger-button {
   color: #a24e3f !important;

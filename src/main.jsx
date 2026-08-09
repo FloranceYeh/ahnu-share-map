@@ -23,6 +23,7 @@ import SubmissionStatus from "./components/SubmissionStatus";
 import AdminPanel from "./components/AdminPanel";
 import ImageLightbox from "./components/ImageLightbox";
 import PlaceReactions from "./components/PlaceReactions";
+import RecommendationDrawer from "./components/RecommendationDrawer";
 import "./styles.css";
 
 function parseScalar(value) {
@@ -869,80 +870,13 @@ function App() {
           />
         ))}
       {drawer && (
-        <aside className="recommendation-drawer">
-          <div className="drawer-handle" />
-          <div className="drawer-heading">
-            <div>
-              <p className="section-kicker">APPROVED PLACES</p>
-              <h2>附近值得去</h2>
-            </div>
-            <button
-              className="drawer-close"
-              onClick={() => setDrawer(false)}
-              aria-label="关闭推荐"
-            >
-              ×
-            </button>
-          </div>
-          <div className="drawer-filters">
-            <span>{filtered.length} 个地点</span>
-            <span>管理员审核通过</span>
-          </div>
-          <div className="place-list">
-            {filtered.map((place) => (
-              <article
-                key={place.id}
-                role="button"
-                tabIndex="0"
-                className={`place-card ${selected?.id === place.id ? "selected" : ""} ${place.cover ? "" : "no-image"}`}
-                onClick={() => selectPlace(place)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ")
-                    selectPlace(place);
-                }}
-              >
-                {place.cover && (
-                  <div
-                    className="place-image"
-                    style={{ backgroundImage: `url(${place.cover})` }}
-                  >
-                    <span
-                      className="place-category"
-                      style={{ background: place.color }}
-                    >
-                      {place.categoryLabel}
-                    </span>
-                    {place.rating !== appConfig.defaultRating && (
-                      <span className="rating">★ {place.rating}</span>
-                    )}
-                  </div>
-                )}
-                <div className="place-body">
-                  <div className="place-title">
-                    <h3>{place.name}</h3>
-                    <span className="arrow">↗</span>
-                  </div>
-                  <p className="place-address">{place.address}</p>
-                  <div className="tag-row">
-                    {place.tags.map((tag) => (
-                      <span key={tag}>#{tag}</span>
-                    ))}
-                  </div>
-                  <p className="quote">“{place.recommendation}”</p>
-                  {place.reactions?.length > 0 && (
-                    <div className="place-reaction-summary" aria-label="表情响应">
-                      {place.reactions.map((reaction) => (
-                        <span key={reaction.reaction_value}>
-                          {reaction.reaction_emoji} {reaction.reaction_count}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </article>
-            ))}
-          </div>
-        </aside>
+        <RecommendationDrawer
+          places={filtered}
+          selectedPlaceId={selected?.id}
+          defaultRating={appConfig.defaultRating}
+          onClose={() => setDrawer(false)}
+          onSelectPlace={selectPlace}
+        />
       )}
       {selected && (
         <div
