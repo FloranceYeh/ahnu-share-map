@@ -80,6 +80,19 @@ const fromAmapCoordinates = (coordinates) => {
   return [coordinates[0] * 2 - converted[0], coordinates[1] * 2 - converted[1]]
 }
 const CENTER = toAmapCoordinates(appConfig.mapCenter)
+const CAMPUSES = [
+  { id: 'zheshan', name: '赭山校区', coordinates: CENTER },
+  { id: 'huajin', name: '花津校区', coordinates: toAmapCoordinates([118.373242, 31.287148]) },
+]
+
+const distanceBetween = ([lngA, latA], [lngB, latB]) => {
+  const earthRadius = 6371000
+  const toRadians = (value) => value * Math.PI / 180
+  const dLat = toRadians(latB - latA)
+  const dLng = toRadians(lngB - lngA)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) * Math.sin(dLng / 2) ** 2
+  return 2 * earthRadius * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
 const detailConfig = parseYaml(detailYamlText).filter((item) => item.key && item.label)
 const categoryConfig = parseYaml(categoryYamlText).filter((item) => item.id && item.label).map((item) => ({
   id: item.id,
@@ -110,13 +123,15 @@ function loadAmap(key) {
   })
 }
 
-function AmapCanvas({ places: visiblePlaces, previewPlaces = [], selected, onSelect, onStatus, onMapClick, debugEnabled, resetSignal, focusPlace }) {
+function AmapCanvas({ places: visiblePlaces, previewPlaces = [], selected, onSelect, onStatus, onMapClick, onCenterChange, debugEnabled, resetSignal, resetCenter, focusPlace }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const mapClickRef = useRef(onMapClick)
+  const centerChangeRef = useRef(onCenterChange)
   const key = import.meta.env.VITE_AMAP_KEY
 
   useEffect(() => { mapClickRef.current = onMapClick }, [onMapClick])
+  useEffect(() => { centerChangeRef.current = onCenterChange }, [onCenterChange])
 
   useEffect(() => {
     let disposed = false
@@ -125,7 +140,13 @@ function AmapCanvas({ places: visiblePlaces, previewPlaces = [], selected, onSel
       const map = new AMap.Map(containerRef.current, { zoom: appConfig.mapZoom, zooms: [appConfig.mapMinZoom, appConfig.mapMaxZoom], center: CENTER, viewMode: '2D', mapStyle: appConfig.mapStyle, resizeEnable: true })
       AMap.plugin(['AMap.ToolBar', 'AMap.Scale'], () => { map.addControl(new AMap.ToolBar({ position: 'RB' })); map.addControl(new AMap.Scale({ position: 'LB' })) })
       map.on('click', (event) => mapClickRef.current?.([event.lnglat.getLng(), event.lnglat.getLat()]))
+      map.on('moveend', () => {
+        const center = map.getCenter()
+        centerChangeRef.current?.([center.getLng(), center.getLat()])
+      })
       mapRef.current = map
+      const center = map.getCenter()
+      centerChangeRef.current?.([center.getLng(), center.getLat()])
       onStatus('ready')
     }).catch((error) => { if (!disposed) onStatus(error.message === 'missing-key' ? 'missing-key' : 'error') })
     return () => { disposed = true; if (mapRef.current) { mapRef.current.destroy(); mapRef.current = null } }
@@ -145,8 +166,8 @@ function AmapCanvas({ places: visiblePlaces, previewPlaces = [], selected, onSel
   }, [visiblePlaces, previewPlaces, selected, onSelect])
 
   useEffect(() => {
-    if (resetSignal > 0 && mapRef.current) mapRef.current.setZoomAndCenter(appConfig.mapZoom, CENTER)
-  }, [resetSignal])
+    if (resetSignal > 0 && mapRef.current) mapRef.current.setZoomAndCenter(appConfig.mapZoom, resetCenter)
+  }, [resetSignal, resetCenter])
 
   useEffect(() => {
     if (focusPlace?.coordinates && mapRef.current) mapRef.current.setZoomAndCenter(appConfig.mapZoom, focusPlace.coordinates)
@@ -188,6 +209,7 @@ function DebugForm({ draft, setDraft, onClose }) {
 }
 
 function App() {
+  const [activeCampusId, setActiveCampusId] = useState('zheshan')
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
@@ -205,6 +227,9 @@ function App() {
   const [contactOpen, setContactOpen] = useState(false)
   const [lightboxImage, setLightboxImage] = useState('')
   const [guideOpen, setGuideOpen] = useState(false)
+  const activeCampus = CAMPUSES.find((campus) => campus.id === activeCampusId) || CAMPUSES[0]
+  const nextCampus = CAMPUSES.find((campus) => campus.id !== activeCampus.id) || CAMPUSES[0]
+  const [mapCenter, setMapCenter] = useState(activeCampus.coordinates)
   const handlePendingChange = useCallback((items) => setAdminPreviewPlaces(items.map((item) => ({ id: item.id, name: item.name, pending: true, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }))), [])
   const handlePreviewPlace = useCallback((item) => setAdminFocus({ id: item.id, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }), [])
   const [catalogPlaces, setCatalogPlaces] = useState(staticPlaces)
@@ -260,7 +285,7 @@ function App() {
     const matchesCategory = activeCategory === 'all' || place.category === activeCategory
     const query = search.trim().toLowerCase()
     return matchesCategory && (!query || `${place.name} ${place.address} ${place.tags.join(' ')}`.toLowerCase().includes(query))
-  }), [activeCategory, search, catalogPlaces])
+  }).map((place, index) => ({ place, index, distance: distanceBetween(place.coordinates, mapCenter) })).sort((a, b) => a.distance - b.distance || a.index - b.index).map(({ place }) => place), [activeCategory, search, catalogPlaces, mapCenter])
   const selectPlace = (place) => { setSelected(place); setSelectedImageIndex(0); setDrawer(false) }
   const createDraft = (coordinates) => {
     if (!debugEnabled && !adminAddEnabled) return
@@ -282,10 +307,10 @@ function App() {
   const selectedImages = selected?.images?.length ? selected.images : selected?.cover ? [selected.cover] : []
 
   return <main className="app-shell">
-    <div className="fullscreen-map"><AmapCanvas places={filtered} previewPlaces={adminPreviewPlaces} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} debugEnabled={debugEnabled || adminAddEnabled} resetSignal={resetSignal} focusPlace={adminFocus} /><div className="map-fallback" aria-hidden="true" /></div>
-    <header className="floating-header"><div className="brand-lockup"><img className="brand-mark" src="/logo.png" alt="" /><div className="brand-copy"><p className="eyebrow">AHNU · ZHESHAN CAMPUS</p><h1>赭山生活地图</h1></div><div className="brand-actions"><button className="author-trigger" onClick={() => setGuideOpen(true)}>重看引导</button><button className="author-trigger" onClick={() => setContactOpen(true)}>联系作者</button></div></div><div className="header-actions">{supabaseConfigured && <><button className="utility-trigger" onClick={() => { setStatusPanel(true); setAdminPanel(false); setDraft(null) }}>查投稿</button><button className="utility-trigger" onClick={() => { setAdminPanel(true); setStatusPanel(false); setDraft(null) }}>管理</button></>}{((supabaseConfigured && appConfig.enablePublicSubmissions) || (!supabaseConfigured && appConfig.enableDebugAddPoint)) && <button className={`debug-trigger ${debugEnabled ? 'active' : ''}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null) }}>＋<span>{debugEnabled ? '取消加点' : supabaseConfigured ? '投稿地点' : '调试录点'}</span></button>}<button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null) }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button></div></header>
+    <div className="fullscreen-map"><AmapCanvas places={filtered} previewPlaces={adminPreviewPlaces} selected={selected} onSelect={selectPlace} onStatus={setMapStatus} onMapClick={createDraft} onCenterChange={setMapCenter} debugEnabled={debugEnabled || adminAddEnabled} resetSignal={resetSignal} resetCenter={activeCampus.coordinates} focusPlace={adminFocus} /><div className="map-fallback" aria-hidden="true" /></div>
+    <header className="floating-header"><div className="brand-lockup"><img className="brand-mark" src="/logo.png" alt="" /><div className="brand-copy"><p className="eyebrow">AHNU · LIFE MAP</p><h1>安师生活地图</h1></div><div className="brand-actions"><button className="author-trigger" onClick={() => setGuideOpen(true)}>重看引导</button><button className="author-trigger" onClick={() => setContactOpen(true)}>联系作者</button></div></div><div className="header-actions">{supabaseConfigured && <><button className="utility-trigger" onClick={() => { setStatusPanel(true); setAdminPanel(false); setDraft(null) }}>查投稿</button><button className="utility-trigger" onClick={() => { setAdminPanel(true); setStatusPanel(false); setDraft(null) }}>管理</button></>}{((supabaseConfigured && appConfig.enablePublicSubmissions) || (!supabaseConfigured && appConfig.enableDebugAddPoint)) && <button className={`debug-trigger ${debugEnabled ? 'active' : ''}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null) }}>＋<span>{debugEnabled ? '取消加点' : supabaseConfigured ? '投稿地点' : '调试录点'}</span></button>}<button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null) }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button></div></header>
     <section className="floating-tools"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜店面或关键词" /></label><div className="category-row" role="tablist" aria-label="地点分类">{categoriesForUi.map((category) => <button key={category.id} className={`category-chip ${activeCategory === category.id ? 'active' : ''}`} onClick={() => setActiveCategory(category.id)}>{category.label}</button>)}</div></section>
-    <button className="map-stamp" onClick={() => { setSelected(null); setDraft(null); setResetSignal((value) => value + 1) }} title="回到地图起点"><span>赭山校区</span><small>安徽师范大学 → 点我回去</small></button>
+    <button className="map-stamp" onClick={() => { setSelected(null); setDraft(null); setActiveCampusId(nextCampus.id); setMapCenter(nextCampus.coordinates); setResetSignal((value) => value + 1) }} title={`切换至${nextCampus.name}`}><span>{activeCampus.name}</span><small>点我切换至{nextCampus.name}</small></button>
     {statusMessage && <div className="map-status-note">{statusMessage}</div>}
     <div className="map-legend">{catalogCategories.map((category) => <span key={category.id}><i className="legend-dot" style={{ background: category.color }} />{category.label}</span>)}</div>
     {(debugEnabled || adminAddEnabled) && !draft && <div className="debug-hint">点击地图放置新的推荐点</div>}
@@ -295,7 +320,7 @@ function App() {
     {drawer && <aside className="recommendation-drawer"><div className="drawer-handle" /><div className="drawer-heading"><div><p className="section-kicker">APPROVED PLACES</p><h2>附近值得去</h2></div><button className="drawer-close" onClick={() => setDrawer(false)} aria-label="关闭推荐">×</button></div><div className="drawer-filters"><span>{filtered.length} 个地点</span><span>管理员审核通过</span></div><div className="place-list">{filtered.map((place) => <article key={place.id} role="button" tabIndex="0" className={`place-card ${selected?.id === place.id ? 'selected' : ''} ${place.cover ? '' : 'no-image'}`} onClick={() => selectPlace(place)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') selectPlace(place) }}>{place.cover && <div className="place-image" style={{ backgroundImage: `url(${place.cover})` }}><span className="place-category" style={{ background: place.color }}>{place.categoryLabel}</span>{place.rating !== appConfig.defaultRating && <span className="rating">★ {place.rating}</span>}</div>}<div className="place-body"><div className="place-title"><h3>{place.name}</h3><span className="arrow">↗</span></div><p className="place-address">{place.address}</p><div className="tag-row">{place.tags.map((tag) => <span key={tag}>#{tag}</span>)}</div><p className="quote">“{place.recommendation}”</p></div></article>)}</div></aside>}
     {selected && <div className={`detail-drawer ${selectedImages.length ? '' : 'no-image'}`}><button className="drawer-close" onClick={() => setSelected(null)} aria-label="关闭详情">×</button>{selectedImages.length > 0 && <div className="detail-media"><button className="drawer-image image-zoom-trigger" style={{ backgroundImage: `url(${selectedImages[selectedImageIndex] || selectedImages[0]})` }} onClick={() => setLightboxImage(selectedImages[selectedImageIndex] || selectedImages[0])} aria-label="查看大图" />{selectedImages.length > 1 && <><button className="gallery-nav gallery-prev" onClick={() => setSelectedImageIndex((index) => (index - 1 + selectedImages.length) % selectedImages.length)} aria-label="上一张图片">‹</button><button className="gallery-nav gallery-next" onClick={() => setSelectedImageIndex((index) => (index + 1) % selectedImages.length)} aria-label="下一张图片">›</button><div className="gallery-dots">{selectedImages.map((image, index) => <button key={image} className={index === selectedImageIndex ? 'active' : ''} onClick={() => setSelectedImageIndex(index)} aria-label={`查看第${index + 1}张图片`} />)}</div></>}</div>}<div className="drawer-content"><div className="drawer-meta"><span className="place-category" style={{ background: selected.color }}>{selected.categoryLabel}</span>{selected.rating !== appConfig.defaultRating && <span>★ {selected.rating}</span>}</div><h2>{selected.name}</h2><p className="drawer-address">{selected.address}</p><div className="detail-grid">{selected.details.map((detail) => <div key={detail.key}><span>{detail.label}</span><strong>{detail.value}</strong></div>)}</div><div className="senior-note"><div className="avatar">学</div><div><span className="note-label">学长说</span><p>{selected.recommendation}</p></div></div><div className="tip-line"><span>TIP</span>{selected.tip}</div>{selected.highlights.length > 0 && <div className="highlight-list">{selected.highlights.map((item) => <span key={item}>✓ {item}</span>)}</div>}</div></div>}
     {contactOpen && <div className="author-modal-backdrop" role="presentation" onClick={() => setContactOpen(false)}><section className="author-card" role="dialog" aria-modal="true" aria-labelledby="author-dialog-title" onClick={(event) => event.stopPropagation()}><button className="author-close" onClick={() => setContactOpen(false)} aria-label="关闭联系作者">×</button><p className="section-kicker">CONTACT</p><h2 id="author-dialog-title">联系作者</h2><div className="author-detail"><span>QQ</span><strong>3393314989</strong></div><div className="author-detail"><span>QQ 群</span><strong>1094990582</strong></div><div className="author-detail"><span>个人主页</span><a href="https://florance.top" target="_blank" rel="noreferrer">florance.top ↗</a></div></section></div>}
-    {guideOpen && <div className="guide-modal-backdrop" role="presentation" onClick={closeGuide}><section className="guide-card" role="dialog" aria-modal="true" aria-labelledby="guide-dialog-title" onClick={(event) => event.stopPropagation()}><button className="author-close" onClick={closeGuide} aria-label="关闭使用引导">×</button><p className="section-kicker">QUICK START</p><h2 id="guide-dialog-title">三步开始逛赭山</h2><ol className="guide-steps"><li><b>1</b><div><strong>搜索或筛选</strong><span>输入店名，或选择分类快速找到目标地点。</span></div></li><li><b>2</b><div><strong>打开推荐</strong><span>点击地图圆点，查看学长分享的具体理由和详情。</span></div></li><li><b>3</b><div><strong>分享新发现</strong><span>点击加号投稿，在地图上选点并提交你的推荐。</span></div></li></ol><button className="copy-yaml guide-confirm" onClick={closeGuide}>开始探索</button></section></div>}
+    {guideOpen && <div className="guide-modal-backdrop" role="presentation" onClick={closeGuide}><section className="guide-card" role="dialog" aria-modal="true" aria-labelledby="guide-dialog-title" onClick={(event) => event.stopPropagation()}><button className="author-close" onClick={closeGuide} aria-label="关闭使用引导">×</button><p className="section-kicker">QUICK START</p><h2 id="guide-dialog-title">三步开始逛安师</h2><ol className="guide-steps"><li><b>1</b><div><strong>搜索或筛选</strong><span>输入店名，或选择分类快速找到目标地点。</span></div></li><li><b>2</b><div><strong>打开推荐</strong><span>点击地图圆点，查看学长分享的具体理由和详情。</span></div></li><li><b>3</b><div><strong>分享新发现</strong><span>点击加号投稿，在地图上选点并提交你的推荐。</span></div></li></ol><button className="copy-yaml guide-confirm" onClick={closeGuide}>开始探索</button></section></div>}
     <ImageLightbox src={lightboxImage} alt={selected?.name || '地点图片'} onClose={() => setLightboxImage('')} />
   </main>
 }
