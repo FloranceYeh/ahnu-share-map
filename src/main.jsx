@@ -286,7 +286,7 @@ function App() {
   const filtered = useMemo(() => catalogPlaces.filter((place) => {
     const matchesCategory = activeCategory === 'all' || place.category === activeCategory
     const query = search.trim().toLowerCase()
-    return matchesCategory && (!query || `${place.name} ${place.address} ${place.tags.join(' ')}`.toLowerCase().includes(query))
+    return matchesCategory && (!query || `${place.name} ${place.address} ${place.tags.join(' ')} ${place.recommendation || ''}`.toLowerCase().includes(query))
   }).map((place, index) => ({ place, index, distance: distanceBetween(place.coordinates, mapCenter) })).sort((a, b) => a.distance - b.distance || a.index - b.index).map(({ place }) => place), [activeCategory, search, catalogPlaces, mapCenter])
   const selectPlace = (place) => { setSelected(place); setSelectedImageIndex(0); setDrawer(false) }
   const createDraft = (coordinates) => {
