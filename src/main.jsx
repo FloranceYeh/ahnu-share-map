@@ -1011,11 +1011,15 @@ function App() {
             <h2 id="author-dialog-title">联系作者</h2>
             <div className="author-detail">
               <span>QQ</span>
-              <strong>3393314989</strong>
+              <strong><a href="https://qm.qq.com/q/RpYQ0TADOW " target="_blank" rel="noreferrer">
+                3393314989
+              </a></strong>
             </div>
             <div className="author-detail">
               <span>QQ 群</span>
-              <strong>1094990582</strong>
+              <strong><a href="https://qm.qq.com/q/mjcBzVPf90" target="_blank" rel="noreferrer">
+                1094990582
+              </a></strong>
             </div>
             <div className="author-detail">
               <span>个人主页</span>
