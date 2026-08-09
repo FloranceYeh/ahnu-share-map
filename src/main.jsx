@@ -83,6 +83,7 @@ const CENTER = toAmapCoordinates(appConfig.mapCenter)
 const CAMPUSES = [
   { id: 'zheshan', name: '赭山校区', coordinates: CENTER },
   { id: 'huajin', name: '花津校区', coordinates: toAmapCoordinates([118.373242, 31.287148]) },
+  { id: 'tianmenshan', name: '天门山校区', coordinates: toAmapCoordinates([118.399542, 31.441666]) },
 ]
 
 const distanceBetween = ([lngA, latA], [lngB, latB]) => {
@@ -227,8 +228,9 @@ function App() {
   const [contactOpen, setContactOpen] = useState(false)
   const [lightboxImage, setLightboxImage] = useState('')
   const [guideOpen, setGuideOpen] = useState(false)
-  const activeCampus = CAMPUSES.find((campus) => campus.id === activeCampusId) || CAMPUSES[0]
-  const nextCampus = CAMPUSES.find((campus) => campus.id !== activeCampus.id) || CAMPUSES[0]
+  const activeCampusIndex = CAMPUSES.findIndex((campus) => campus.id === activeCampusId)
+  const activeCampus = CAMPUSES[activeCampusIndex >= 0 ? activeCampusIndex : 0]
+  const nextCampus = CAMPUSES[(activeCampusIndex + 1) % CAMPUSES.length]
   const [mapCenter, setMapCenter] = useState(activeCampus.coordinates)
   const handlePendingChange = useCallback((items) => setAdminPreviewPlaces(items.map((item) => ({ id: item.id, name: item.name, pending: true, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }))), [])
   const handlePreviewPlace = useCallback((item) => setAdminFocus({ id: item.id, coordinates: toAmapCoordinates([item.longitude, item.latitude]) }), [])
