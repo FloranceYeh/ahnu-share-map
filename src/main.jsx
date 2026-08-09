@@ -502,6 +502,7 @@ function App() {
   const [contactOpen, setContactOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
+  const [navigationMenuOpen, setNavigationMenuOpen] = useState(false);
   const activeCampusIndex = CAMPUSES.findIndex(
     (campus) => campus.id === activeCampusId,
   );
@@ -648,6 +649,7 @@ function App() {
   const selectPlace = (place) => {
     setSelected(place);
     setSelectedImageIndex(0);
+    setNavigationMenuOpen(false);
     setDrawer(false);
   };
   const createDraft = (coordinates) => {
@@ -685,6 +687,32 @@ function App() {
     : selected?.cover
       ? [selected.cover]
       : [];
+  const navigationLinks = useMemo(() => {
+    if (!selected?.coordinates) return [];
+    const [gcjLongitude, gcjLatitude] = selected.coordinates;
+    const [wgsLongitude, wgsLatitude] = fromAmapCoordinates(
+      selected.coordinates,
+    );
+    const destinationName = encodeURIComponent(selected.name);
+    return [
+      {
+        label: "高德",
+        href: `https://uri.amap.com/navigation?to=${gcjLongitude},${gcjLatitude},${destinationName}&mode=car&policy=1&coordinate=gaode&callnative=1`,
+      },
+      {
+        label: "腾讯",
+        href: `https://apis.map.qq.com/uri/v1/routeplan?type=drive&to=${destinationName}&tocoord=${gcjLatitude},${gcjLongitude}&referer=ahnu-share-map`,
+      },
+      {
+        label: "百度",
+        href: `https://api.map.baidu.com/direction?destination=${gcjLatitude},${gcjLongitude}&mode=driving&output=html&coord_type=gcj02&src=ahnu-share-map`,
+      },
+      {
+        label: "苹果",
+        href: `https://maps.apple.com/?daddr=${wgsLatitude},${wgsLongitude}&dirflg=d`,
+      },
+    ];
+  }, [selected]);
 
   return (
     <main className="app-shell">
@@ -957,6 +985,15 @@ function App() {
             </div>
             <h2>{selected.name}</h2>
             <p className="drawer-address">{selected.address}</p>
+            {navigationLinks.length > 0 && (
+              <button
+                type="button"
+                className="mobile-navigation-trigger"
+                onClick={() => setNavigationMenuOpen(true)}
+              >
+                一键导航
+              </button>
+            )}
             <div className="detail-grid">
               {selected.details.map((detail) => (
                 <div key={detail.key}>
@@ -985,6 +1022,37 @@ function App() {
               </div>
             )}
           </div>
+        </div>
+      )}
+      {navigationMenuOpen && navigationLinks.length > 0 && (
+        <div
+          className="navigation-popover-backdrop"
+          role="presentation"
+          onClick={() => setNavigationMenuOpen(false)}
+        >
+          <section
+            className="navigation-popover"
+            role="dialog"
+            aria-modal="true"
+            aria-label="选择导航软件"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="navigation-popover-close"
+              onClick={() => setNavigationMenuOpen(false)}
+              aria-label="关闭导航软件选择"
+            >
+              ×
+            </button>
+            <div className="navigation-popover-options">
+              {navigationLinks.map((link) => (
+                <a key={link.label} href={link.href}>
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </section>
         </div>
       )}
       {contactOpen && (

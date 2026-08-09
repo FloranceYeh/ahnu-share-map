@@ -617,6 +617,10 @@ button {
   color: #7f8e83;
   font-size: 10px;
 }
+.mobile-navigation-trigger,
+.navigation-popover-backdrop {
+  display: none;
+}
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -696,6 +700,67 @@ button {
   }
   .brand-lockup {
     padding: 8px 11px 8px 8px;
+  }
+  .mobile-navigation-trigger {
+    display: inline-flex;
+    min-height: 30px;
+    align-items: center;
+    padding: 0 12px;
+    margin: -5px 0 14px;
+    color: #376047;
+    background: #e7efe6;
+    border: 1px solid #d7ded5;
+    border-radius: 3px;
+    font-size: 10px;
+  }
+  .navigation-popover-backdrop {
+    position: fixed;
+    z-index: 1800;
+    inset: 0;
+    display: grid;
+    place-items: end center;
+    padding: 16px;
+    background: rgba(15, 24, 19, 0.42);
+  }
+  .navigation-popover {
+    position: relative;
+    width: min(360px, 100%);
+    padding: 38px 16px 16px;
+    background: #fffdf8;
+    border: 1px solid #d6ded4;
+    border-radius: 6px;
+    box-shadow: 0 16px 40px rgba(33, 50, 40, 0.22);
+  }
+  .navigation-popover-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    color: #52655a;
+    background: #e7eee5;
+    border: 0;
+    border-radius: 50%;
+    font-size: 19px;
+    line-height: 1;
+  }
+  .navigation-popover-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .navigation-popover-options a {
+    display: grid;
+    min-height: 44px;
+    place-items: center;
+    color: #376047;
+    background: #e7efe6;
+    border: 1px solid #d7ded5;
+    border-radius: 3px;
+    font-size: 12px;
+    text-decoration: none;
   }
   .brand-mark {
     width: 31px;
