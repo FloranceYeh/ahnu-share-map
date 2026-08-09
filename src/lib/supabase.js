@@ -6,6 +6,38 @@ const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const supabaseConfigured = Boolean(url && anonKey)
 export const supabase = supabaseConfigured ? createClient(url, anonKey) : null
 
+const reactionVoterStorageKey = 'place-reaction-voter-token'
+
+function getReactionVoterToken() {
+  let token = window.localStorage.getItem(reactionVoterStorageKey)
+  if (!token) {
+    token = crypto.randomUUID()
+    window.localStorage.setItem(reactionVoterStorageKey, token)
+  }
+  return token
+}
+
+export async function loadPlaceReactions(placeId) {
+  if (!supabase) return []
+  const { data, error } = await supabase.rpc('get_place_reactions', {
+    target_place_id: placeId,
+    voter_token: getReactionVoterToken(),
+  })
+  if (error) throw error
+  return data || []
+}
+
+export async function setPlaceReaction(placeId, reaction) {
+  if (!supabase) throw new Error('Supabase 未配置')
+  const { data, error } = await supabase.rpc('set_place_reaction', {
+    target_place_id: placeId,
+    new_reaction: reaction,
+    voter_token: getReactionVoterToken(),
+  })
+  if (error) throw error
+  return data || []
+}
+
 export async function compressImageToWebp(file, maxDimension = 1600, quality = 0.82) {
   if (!file?.type?.startsWith('image/') || file.type === 'image/gif' || typeof createImageBitmap !== 'function') return file
   let bitmap
