@@ -7,13 +7,7 @@
   coordinateSystem: wgs84
   enableDebugAddPoint: false
   enablePublicSubmissions: true
-  coordinateStep: [0.0008, 0.0007]
-  placeIdPrefix: place
   allCategoryLabel: 全部
   defaultCategory: food
   defaultCategoryColor: '#5e8c73'
-  defaultAddress: 赭山校区周边
   defaultRating: —
-  defaultTip: 出发前建议确认营业状态。
-  defaultTags: []
-  defaultHighlights: []

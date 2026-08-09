@@ -158,7 +158,6 @@ export function mapDynamicPlace(row, categoriesById, detailFields) {
     images,
     tags: row.tags || [],
     highlights: row.highlights || [],
-    tip: row.custom_details?.tip || "",
     details,
   };
 }

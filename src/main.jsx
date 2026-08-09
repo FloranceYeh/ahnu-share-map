@@ -977,10 +977,6 @@ function App() {
               placeId={selected.id}
               reactions={catalogReactions}
             />
-            <div className="tip-line">
-              <span>TIP</span>
-              {selected.tip}
-            </div>
             {selected.highlights.length > 0 && (
               <div className="highlight-list">
                 {selected.highlights.map((item) => (
