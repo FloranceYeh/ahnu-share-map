@@ -42,7 +42,7 @@ select id, email from auth.users where email = '你的管理员邮箱';
 SMTP_PORT=465
 SMTP_USER=你的QQ邮箱
 SMTP_PASS=QQ邮箱SMTP授权码
-SMTP_FROM=你的QQ邮箱
+SMTP_FROM=AHNU Share Map
 ADMIN_NOTIFICATION_SECRET=随机长密钥
 ```
 

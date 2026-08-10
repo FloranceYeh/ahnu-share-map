@@ -72,10 +72,20 @@ export default async function handler(request, response) {
     secure: true,
     auth: { user: smtpUser, pass: smtpPass },
   });
+  const configuredFrom = stringValue(process.env.SMTP_FROM, 320).replace(
+    /[\r\n]/g,
+    " ",
+  );
+  const from = configuredFrom
+    ? configuredFrom.includes("@")
+      ? configuredFrom
+      : { name: configuredFrom, address: smtpUser }
+    : smtpUser;
 
   try {
     const result = await transporter.sendMail({
-      from: process.env.SMTP_FROM || smtpUser,
+      from,
+      envelope: { from: smtpUser, to: recipients },
       to: recipients,
       subject: `【安师生活地图】新投稿待审核：${name.replace(/[\r\n]/g, " ")}`,
       text: mailText,
