@@ -132,10 +132,8 @@ export default function AdminPanel({
     "latitude",
     "longitude",
   ];
-  const placeValue = (item, key) =>
-    edits[item.id]?.[key] ?? item[key] ?? item.custom_details?.[key] ?? "";
   const buildPlaceChanges = (item) => {
-    const draft = edits[item.id] || {};
+    const draft = edits[itemKey(item)] || {};
     const changes = {};
     directFieldKeys.forEach((key) => {
       if (draft[key] === undefined) return;
@@ -168,8 +166,9 @@ export default function AdminPanel({
       await reviewPlace(
         item.id,
         status,
-        reason[item.id],
+        reason[itemKey(item)],
         buildPlaceChanges(item),
+        item.query_code,
       );
       await loadAll();
       onDataChanged?.();
@@ -464,7 +463,8 @@ export default function AdminPanel({
       ...current,
       [id]: { ...(current[id] || {}), [key]: value },
     }));
-  const editor = (item) => edits[item.id] || {};
+  const itemKey = (item) => item.id || item.query_code;
+  const placeDraft = (item) => edits[itemKey(item)] || {};
   const renderImageManager = (item, publishedMode) => {
     const images = publishedMode
       ? item.image_urls?.length
@@ -534,7 +534,7 @@ export default function AdminPanel({
   const renderPlaceEditor = (item, publishedMode = false) => (
     <article
       className="pending-card"
-      key={item.id}
+      key={itemKey(item)}
       onClick={() => onPreviewPlace?.(item)}
     >
       <h3 className="admin-card-heading">
@@ -543,16 +543,18 @@ export default function AdminPanel({
       {renderImageManager(item, publishedMode)}
       <input
         className="pending-edit"
-        value={placeValue(item, "name")}
+        value={placeDraft(item).name ?? item.name ?? ""}
         onClick={(event) => event.stopPropagation()}
-        onChange={(event) => updateEdit(item.id, "name", event.target.value)}
+        onChange={(event) =>
+          updateEdit(itemKey(item), "name", event.target.value)
+        }
       />
       <textarea
         rows="3"
-        value={placeValue(item, "recommendation")}
+        value={placeDraft(item).recommendation ?? item.recommendation ?? ""}
         onClick={(event) => event.stopPropagation()}
         onChange={(event) =>
-          updateEdit(item.id, "recommendation", event.target.value)
+          updateEdit(itemKey(item), "recommendation", event.target.value)
         }
       />
       <div
@@ -562,9 +564,9 @@ export default function AdminPanel({
         <label>
           <span>分类</span>
           <select
-            value={placeValue(item, "category_id")}
+            value={placeDraft(item).category_id ?? item.category_id ?? ""}
             onChange={(event) =>
-              updateEdit(item.id, "category_id", event.target.value)
+              updateEdit(itemKey(item), "category_id", event.target.value)
             }
           >
             {categories.map((category) => (
@@ -577,9 +579,9 @@ export default function AdminPanel({
         <label>
           <span>地址</span>
           <input
-            value={placeValue(item, "address")}
+            value={placeDraft(item).address ?? item.address ?? ""}
             onChange={(event) =>
-              updateEdit(item.id, "address", event.target.value)
+              updateEdit(itemKey(item), "address", event.target.value)
             }
           />
         </label>
@@ -589,17 +591,17 @@ export default function AdminPanel({
             <input
               type={field.key === "rating" ? "number" : "text"}
               step={field.key === "rating" ? "0.1" : undefined}
-              value={placeValue(item, field.key)}
+              value={placeDraft(item)[field.key] ?? item[field.key] ?? item.custom_details?.[field.key] ?? ""}
               onChange={(event) =>
-                updateEdit(item.id, field.key, event.target.value)
+                updateEdit(itemKey(item), field.key, event.target.value)
               }
             />
           </label>
         ))}
       </div>
       <small>
-        {Number(placeValue(item, "latitude") || item.latitude).toFixed(6)},{" "}
-        {Number(placeValue(item, "longitude") || item.longitude).toFixed(6)} ·
+        {Number(placeDraft(item).latitude ?? item.latitude).toFixed(6)},{" "}
+        {Number(placeDraft(item).longitude ?? item.longitude).toFixed(6)} ·
         点击卡片定位
       </small>
       {publishedMode && reactions.some((reaction) => reaction.is_active) && (
@@ -689,12 +691,12 @@ export default function AdminPanel({
           <textarea
             rows="2"
             placeholder="驳回原因（可选）"
-            value={reason[item.id] || ""}
+            value={reason[itemKey(item)] || ""}
             onClick={(event) => event.stopPropagation()}
             onChange={(event) =>
               setReason((current) => ({
                 ...current,
-                [item.id]: event.target.value,
+                [itemKey(item)]: event.target.value,
               }))
             }
           />

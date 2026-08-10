@@ -647,15 +647,22 @@ export async function reviewPlace(
   status,
   rejectionReason = "",
   changes = {},
+  queryCode = "",
 ) {
   if (!supabase) throw new Error("Supabase 未配置");
-  const placeId = requirePlaceId(id);
+  const hasId = typeof id === "string" && id.trim();
+  const hasQueryCode = typeof queryCode === "string" && queryCode.trim();
+  if (!hasId && !hasQueryCode)
+    throw new Error("投稿缺少有效 ID 和查询码，无法审核");
+  const referenceColumn = hasId ? "id" : "query_code";
+  const referenceValue = hasId ? id : queryCode.trim();
   const { data: existing, error: fetchError } = await supabase
     .from("places")
     .select("*")
-    .eq("id", placeId)
+    .eq(referenceColumn, referenceValue)
     .single();
   if (fetchError) throw fetchError;
+  const placeId = requirePlaceId(existing.id);
   let coverUrl = existing.cover_url;
   let imageUrls = existing.image_urls?.length
     ? existing.image_urls
