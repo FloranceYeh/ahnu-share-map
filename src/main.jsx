@@ -123,6 +123,24 @@ const toAmapCoordinates = (coordinates) =>
   appConfig.coordinateSystem === "wgs84"
     ? wgs84ToGcj02(coordinates)
     : coordinates;
+const hasValidCoordinates = (coordinates) => {
+  if (!Array.isArray(coordinates) || coordinates.length !== 2) return false;
+  if (
+    coordinates.some(
+      (value) => value === null || value === undefined || value === "",
+    )
+  )
+    return false;
+  const [longitude, latitude] = coordinates.map(Number);
+  return (
+    Number.isFinite(longitude) &&
+    Number.isFinite(latitude) &&
+    longitude >= -180 &&
+    longitude <= 180 &&
+    latitude >= -90 &&
+    latitude <= 90
+  );
+};
 const fromAmapCoordinates = (coordinates) => {
   if (appConfig.coordinateSystem !== "wgs84") return coordinates;
   const converted = wgs84ToGcj02(coordinates);
@@ -271,25 +289,28 @@ function AmapCanvas({
     const map = mapRef.current;
     if (!map || !window.AMap) return;
     map.clearMap();
-    [...visiblePlaces, ...previewPlaces].forEach((place) => {
-      const color = place.pending
-        ? "#b36f43"
-        : place.color || appConfig.defaultCategoryColor;
-      const marker = new window.AMap.Marker({
-        position: place.coordinates,
-        content: `<span class="dot-marker ${selected?.id === place.id ? "is-active" : ""}" style="--dot-color:${color}"></span>`,
-        offset: new window.AMap.Pixel(-9, -9),
-        zIndex: selected?.id === place.id ? 120 : 100,
-        title: place.name,
+    [...visiblePlaces, ...previewPlaces]
+      .filter((place) => hasValidCoordinates(place.coordinates))
+      .forEach((place) => {
+        const color = place.pending
+          ? "#b36f43"
+          : place.color || appConfig.defaultCategoryColor;
+        const marker = new window.AMap.Marker({
+          position: place.coordinates,
+          content: `<span class="dot-marker ${selected?.id === place.id ? "is-active" : ""}" style="--dot-color:${color}"></span>`,
+          offset: new window.AMap.Pixel(-9, -9),
+          zIndex: selected?.id === place.id ? 120 : 100,
+          title: place.name,
+        });
+        marker.on("click", () =>
+          place.pending
+            ? map.setZoomAndCenter(appConfig.mapZoom, place.coordinates)
+            : onSelect(place),
+        );
+        map.add(marker);
       });
-      marker.on("click", () =>
-        place.pending
-          ? map.setZoomAndCenter(appConfig.mapZoom, place.coordinates)
-          : onSelect(place),
-      );
-      map.add(marker);
-    });
-    if (selected) map.setCenter(selected.coordinates);
+    if (selected && hasValidCoordinates(selected.coordinates))
+      map.setCenter(selected.coordinates);
   }, [visiblePlaces, previewPlaces, selected, onSelect]);
 
   useEffect(() => {
@@ -298,7 +319,7 @@ function AmapCanvas({
   }, [resetSignal, resetCenter]);
 
   useEffect(() => {
-    if (focusPlace?.coordinates && mapRef.current)
+    if (focusPlace?.coordinates && hasValidCoordinates(focusPlace.coordinates) && mapRef.current)
       mapRef.current.setZoomAndCenter(
         appConfig.mapZoom,
         focusPlace.coordinates,
@@ -512,23 +533,32 @@ function App() {
   const handlePendingChange = useCallback(
     (items) =>
       setAdminPreviewPlaces(
-        items.map((item) => ({
-          id: item.id,
-          name: item.name,
-          pending: true,
-          coordinates: toAmapCoordinates([item.longitude, item.latitude]),
-        })),
+        items
+          .filter((item) =>
+            hasValidCoordinates([item.longitude, item.latitude]),
+          )
+          .map((item) => ({
+            id: item.id,
+            name: item.name,
+            pending: true,
+            coordinates: toAmapCoordinates([
+              Number(item.longitude),
+              Number(item.latitude),
+            ]),
+          })),
       ),
     [],
   );
-  const handlePreviewPlace = useCallback(
-    (item) =>
-      setAdminFocus({
-        id: item.id,
-        coordinates: toAmapCoordinates([item.longitude, item.latitude]),
-      }),
-    [],
-  );
+  const handlePreviewPlace = useCallback((item) => {
+    if (!hasValidCoordinates([item.longitude, item.latitude])) return;
+    setAdminFocus({
+      id: item.id,
+      coordinates: toAmapCoordinates([
+        Number(item.longitude),
+        Number(item.latitude),
+      ]),
+    });
+  }, []);
   const [catalogPlaces, setCatalogPlaces] = useState(staticPlaces);
   const [catalogCategories, setCatalogCategories] = useState(categoryConfig);
   const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig);
