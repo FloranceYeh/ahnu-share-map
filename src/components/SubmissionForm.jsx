@@ -6,6 +6,13 @@ import {
 import Turnstile from "./Turnstile";
 
 const yamlValue = (value) => `'${String(value).replaceAll("'", "''")}'`;
+const hasValidPlaceCoordinates = (latitude, longitude) =>
+  Number.isFinite(latitude) &&
+  Number.isFinite(longitude) &&
+  latitude >= 0.8293 &&
+  latitude <= 55.8271 &&
+  longitude >= 72.004 &&
+  longitude <= 137.8347;
 
 export default function SubmissionForm({
   draft,
@@ -59,6 +66,12 @@ export default function SubmissionForm({
   }, [draft, detailFields]);
   const submit = async () => {
     if (!draft.name.trim() || !draft.recommendation.trim()) return;
+    const latitude = Number(draft.latitude);
+    const longitude = Number(draft.longitude);
+    if (!hasValidPlaceCoordinates(latitude, longitude)) {
+      setError("请在地图上选择有效地点，或填写中国大陆范围内的经纬度");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
@@ -71,8 +84,8 @@ export default function SubmissionForm({
         name: draft.name.trim(),
         recommendation: draft.recommendation.trim(),
         category_id: draft.category,
-        latitude: Number(draft.latitude),
-        longitude: Number(draft.longitude),
+        latitude,
+        longitude,
         hours: draft.hours || null,
         price: draft.price || null,
         best_for: draft.bestFor || null,
@@ -142,6 +155,8 @@ export default function SubmissionForm({
           <label>
             <span>经度</span>
             <input
+              type="number"
+              step="0.000001"
               value={draft.longitude}
               onChange={(event) => update("longitude", event.target.value)}
             />
@@ -149,6 +164,8 @@ export default function SubmissionForm({
           <label>
             <span>纬度</span>
             <input
+              type="number"
+              step="0.000001"
               value={draft.latitude}
               onChange={(event) => update("latitude", event.target.value)}
             />

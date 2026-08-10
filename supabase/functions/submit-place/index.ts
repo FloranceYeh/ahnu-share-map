@@ -78,16 +78,38 @@ function stringValue(
   return trimmed || null;
 }
 
+function coordinateValue(
+  value: unknown,
+  field: string,
+  minimum: number,
+  maximum: number,
+) {
+  if (
+    (typeof value !== "number" && typeof value !== "string") ||
+    (typeof value === "string" && !value.trim())
+  )
+    fail(`${field}无效`);
+  const numericValue = Number(value);
+  if (
+    !Number.isFinite(numericValue) ||
+    numericValue < minimum ||
+    numericValue > maximum
+  )
+    fail(`${field}无效`);
+  return numericValue;
+}
+
 function normalizePayload(payload: unknown, submissionId: string | null) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload))
     fail("投稿数据格式错误");
   const source = payload as Record<string, unknown>;
-  const latitude = Number(source.latitude);
-  const longitude = Number(source.longitude);
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)
-    fail("纬度无效");
-  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
-    fail("经度无效");
+  const latitude = coordinateValue(source.latitude, "纬度", 0.8293, 55.8271);
+  const longitude = coordinateValue(
+    source.longitude,
+    "经度",
+    72.004,
+    137.8347,
+  );
 
   const customSource = source.custom_details;
   if (

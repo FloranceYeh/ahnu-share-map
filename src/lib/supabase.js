@@ -7,6 +7,11 @@ export const supabaseConfigured = Boolean(url && anonKey);
 export const supabase = supabaseConfigured ? createClient(url, anonKey) : null;
 
 const reactionVoterStorageKey = "place-reaction-voter-token";
+const requirePlaceId = (id) => {
+  if (typeof id !== "string" || !id.trim())
+    throw new Error("地点 ID 无效，请刷新后台后重试");
+  return id;
+};
 
 function getReactionVoterToken() {
   let token = window.localStorage.getItem(reactionVoterStorageKey);
@@ -273,10 +278,11 @@ export async function loadPlacesByStatus(status) {
 
 export async function updatePlace(id, changes) {
   if (!supabase) throw new Error("Supabase 未配置");
+  const placeId = requirePlaceId(id);
   const { data, error } = await supabase
     .from("places")
     .update(changes)
-    .eq("id", id)
+    .eq("id", placeId)
     .select()
     .single();
   if (error) throw error;
@@ -285,10 +291,11 @@ export async function updatePlace(id, changes) {
 
 export async function deletePlace(id) {
   if (!supabase) throw new Error("Supabase 未配置");
+  const placeId = requirePlaceId(id);
   const { data: existing, error: fetchError } = await supabase
     .from("places")
     .select("image_urls,cover_url,custom_details")
-    .eq("id", id)
+    .eq("id", placeId)
     .single();
   if (fetchError) throw fetchError;
   const pendingPaths = existing.custom_details?.images || [];
@@ -313,7 +320,10 @@ export async function deletePlace(id) {
       .remove(publicPaths);
     if (error) throw error;
   }
-  const { error } = await supabase.from("places").delete().eq("id", id);
+  const { error } = await supabase
+    .from("places")
+    .delete()
+    .eq("id", placeId);
   if (error) throw error;
 }
 
@@ -510,10 +520,11 @@ const publicImagePathFromUrl = (url) => {
 
 export async function removePendingImage(placeId, path) {
   if (!supabase) throw new Error("Supabase 未配置");
+  const validPlaceId = requirePlaceId(placeId);
   const { data: existing, error: fetchError } = await supabase
     .from("places")
     .select("custom_details")
-    .eq("id", placeId)
+    .eq("id", validPlaceId)
     .single();
   if (fetchError) throw fetchError;
   const imagePaths = existing.custom_details?.images || [];
@@ -530,16 +541,17 @@ export async function removePendingImage(placeId, path) {
         images: imagePaths.filter((item) => item !== path),
       },
     })
-    .eq("id", placeId);
+    .eq("id", validPlaceId);
   if (error) throw error;
 }
 
 export async function uploadPublishedImages(placeId, files = []) {
   if (!supabase || !files.length) return;
+  const validPlaceId = requirePlaceId(placeId);
   const { data: existing, error: fetchError } = await supabase
     .from("places")
     .select("image_urls,cover_url")
-    .eq("id", placeId)
+    .eq("id", validPlaceId)
     .single();
   if (fetchError) throw fetchError;
   const currentUrls = existing.image_urls?.length
@@ -552,7 +564,7 @@ export async function uploadPublishedImages(placeId, files = []) {
   const newUrls = [];
   for (const sourceFile of files) {
     const file = await compressImageToWebp(sourceFile);
-    const path = `${placeId}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, "_")}`;
+    const path = `${validPlaceId}/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, "_")}`;
     const { error } = await supabase.storage
       .from("place-images")
       .upload(path, file, { upsert: false, contentType: file.type });
@@ -568,16 +580,17 @@ export async function uploadPublishedImages(placeId, files = []) {
       image_urls: imageUrls,
       cover_url: existing.cover_url || imageUrls[0] || null,
     })
-    .eq("id", placeId);
+    .eq("id", validPlaceId);
   if (error) throw error;
 }
 
 export async function removePublishedImage(placeId, imageUrl) {
   if (!supabase) throw new Error("Supabase 未配置");
+  const validPlaceId = requirePlaceId(placeId);
   const { data: existing, error: fetchError } = await supabase
     .from("places")
     .select("image_urls,cover_url")
-    .eq("id", placeId)
+    .eq("id", validPlaceId)
     .single();
   if (fetchError) throw fetchError;
   const currentUrls = existing.image_urls?.length
@@ -599,16 +612,17 @@ export async function removePublishedImage(placeId, imageUrl) {
   const { error } = await supabase
     .from("places")
     .update({ image_urls: imageUrls, cover_url: coverUrl })
-    .eq("id", placeId);
+    .eq("id", validPlaceId);
   if (error) throw error;
 }
 
 export async function setPublishedCover(placeId, imageUrl) {
   if (!supabase) throw new Error("Supabase 未配置");
+  const validPlaceId = requirePlaceId(placeId);
   const { data: existing, error: fetchError } = await supabase
     .from("places")
     .select("image_urls,cover_url")
-    .eq("id", placeId)
+    .eq("id", validPlaceId)
     .single();
   if (fetchError) throw fetchError;
   const currentUrls = existing.image_urls?.length
@@ -624,7 +638,7 @@ export async function setPublishedCover(placeId, imageUrl) {
   const { error } = await supabase
     .from("places")
     .update({ cover_url: imageUrl, image_urls: imageUrls })
-    .eq("id", placeId);
+    .eq("id", validPlaceId);
   if (error) throw error;
 }
 
@@ -635,10 +649,11 @@ export async function reviewPlace(
   changes = {},
 ) {
   if (!supabase) throw new Error("Supabase 未配置");
+  const placeId = requirePlaceId(id);
   const { data: existing, error: fetchError } = await supabase
     .from("places")
     .select("*")
-    .eq("id", id)
+    .eq("id", placeId)
     .single();
   if (fetchError) throw fetchError;
   let coverUrl = existing.cover_url;
@@ -655,7 +670,7 @@ export async function reviewPlace(
         .from("submission-images")
         .download(path);
       if (downloadError) throw downloadError;
-      const publicPath = `${id}/${path.split("/").pop()}`;
+      const publicPath = `${placeId}/${path.split("/").pop()}`;
       const { error: uploadError } = await supabase.storage
         .from("place-images")
         .upload(publicPath, file, { upsert: true, contentType: file.type });
@@ -687,7 +702,7 @@ export async function reviewPlace(
       reviewed_at: new Date().toISOString(),
       reviewed_by: userResult.user?.id || null,
     })
-    .eq("id", id)
+    .eq("id", placeId)
     .select()
     .single();
   if (error) throw error;
