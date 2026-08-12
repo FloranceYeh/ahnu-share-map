@@ -146,7 +146,6 @@ const fromAmapCoordinates = (coordinates) => {
   const converted = wgs84ToGcj02(coordinates);
   return [coordinates[0] * 2 - converted[0], coordinates[1] * 2 - converted[1]];
 };
-const CENTER = toAmapCoordinates(appConfig.mapCenter);
 const CAMPUSES = parseYaml(campusYamlText)
   .filter(
     (campus) =>
@@ -240,6 +239,7 @@ function AmapCanvas({
   onMapClick,
   onCenterChange,
   debugEnabled,
+  initialCenter,
   resetSignal,
   resetCenter,
   focusPlace,
@@ -265,7 +265,7 @@ function AmapCanvas({
         const map = new AMap.Map(containerRef.current, {
           zoom: appConfig.mapZoom,
           zooms: [appConfig.mapMinZoom, appConfig.mapMaxZoom],
-          center: CENTER,
+          center: initialCenter,
           viewMode: "2D",
           mapStyle: appConfig.mapStyle,
           resizeEnable: true,
@@ -783,6 +783,7 @@ function App() {
           onMapClick={createDraft}
           onCenterChange={setMapCenter}
           debugEnabled={debugEnabled || adminAddEnabled}
+          initialCenter={activeCampus.coordinates}
           resetSignal={resetSignal}
           resetCenter={activeCampus.coordinates}
           focusPlace={adminFocus}
