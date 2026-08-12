@@ -684,6 +684,21 @@ button {
   color: #7f8e83;
   font-size: 10px;
 }
+.sort-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sort-select select {
+  height: 28px;
+  padding: 0 24px 0 8px;
+  color: #52655a;
+  background: #f1f4ed;
+  border: 1px solid #d4ddd2;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+}
 .mobile-navigation-trigger,
 .navigation-popover-backdrop {
   display: none;
@@ -1827,6 +1842,28 @@ button {
 .config-row.new-row {
   padding-bottom: 9px;
   border-bottom: 1px solid #dce4da;
+}
+.sort-settings {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  background: #fffdf8;
+  border: 1px solid #e0e6de;
+  border-radius: 5px;
+}
+.sort-weight-summary {
+  display: flex;
+  justify-content: space-between;
+  color: #52655a;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sort-settings input[type="range"] {
+  width: 100%;
+  accent-color: #295844;
+}
+.sort-settings .copy-yaml {
+  margin: 0;
 }
 .reaction-config-row {
   display: grid;

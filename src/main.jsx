@@ -12,6 +12,7 @@ import campusYamlText from "./data/campuses.yml?raw";
 import detailYamlText from "./data/details.yml?raw";
 import reactionYamlText from "./data/reactions.yml?raw";
 import {
+  defaultRecommendationSortSettings,
   getSubmissionStatus,
   loadDynamicCatalog,
   loadPlacesByStatus,
@@ -590,6 +591,10 @@ function App() {
   const [catalogCategories, setCatalogCategories] = useState(categoryConfig);
   const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig);
   const [catalogReactions, setCatalogReactions] = useState(reactionConfig);
+  const [sortMode, setSortMode] = useState("combined");
+  const [sortSettings, setSortSettings] = useState(
+    defaultRecommendationSortSettings,
+  );
   const [dataStatus, setDataStatus] = useState("static");
 
   useEffect(() => {
@@ -678,6 +683,9 @@ function App() {
       );
       setCatalogDetailFields(nextFields.length ? nextFields : detailConfig);
       setCatalogReactions(nextReactions.length ? nextReactions : reactionConfig);
+      setSortSettings(
+        catalog.sortSettings || defaultRecommendationSortSettings,
+      );
       setCatalogPlaces(
         (catalog.places || []).map((place) => {
           const mapped = mapDynamicPlace(place, nextCategoryById, nextFields);
@@ -720,18 +728,61 @@ function App() {
         }),
     [activeCategory, search, catalogPlaces],
   );
-  const filtered = useMemo(
-    () =>
-      visiblePlaces
-        .map((place, index) => ({
-          place,
-          index,
-          distance: distanceBetween(place.coordinates, mapCenter),
-        }))
-        .sort((a, b) => a.distance - b.distance || a.index - b.index)
-        .map(({ place }) => place),
-    [visiblePlaces, mapCenter],
-  );
+  const filtered = useMemo(() => {
+    const ranked = visiblePlaces.map((place, index) => ({
+      place,
+      index,
+      distance: distanceBetween(place.coordinates, mapCenter),
+      responses: (place.reactions || []).reduce(
+        (total, reaction) => total + Number(reaction.reaction_count || 0),
+        0,
+      ),
+    }));
+    const distanceOrder = [...ranked].sort(
+      (a, b) => a.distance - b.distance || a.index - b.index,
+    );
+    const responseOrder = [...ranked].sort(
+      (a, b) =>
+        b.responses - a.responses || a.distance - b.distance || a.index - b.index,
+    );
+    const distanceRanks = new Map();
+    distanceOrder.forEach((item, index) => {
+      const previous = distanceOrder[index - 1];
+      const rank = previous?.distance === item.distance
+        ? distanceRanks.get(previous.place.id)
+        : index;
+      distanceRanks.set(item.place.id, rank);
+    });
+    const responseRanks = new Map();
+    responseOrder.forEach((item, index) => {
+      const previous = responseOrder[index - 1];
+      const rank = previous?.responses === item.responses
+        ? responseRanks.get(previous.place.id)
+        : index;
+      responseRanks.set(item.place.id, rank);
+    });
+    const tieBreak = (a, b) =>
+      b.responses - a.responses ||
+      a.distance - b.distance ||
+      a.index - b.index;
+    if (sortMode === "distance")
+      return distanceOrder.map(({ place }) => place);
+    if (sortMode === "response")
+      return responseOrder.map(({ place }) => place);
+    const distanceWeight = sortSettings.distance_weight / 100;
+    const responseWeight = sortSettings.response_weight / 100;
+    return ranked
+      .sort((a, b) => {
+        const aScore =
+          distanceRanks.get(a.place.id) * distanceWeight +
+          responseRanks.get(a.place.id) * responseWeight;
+        const bScore =
+          distanceRanks.get(b.place.id) * distanceWeight +
+          responseRanks.get(b.place.id) * responseWeight;
+        return aScore - bScore || tieBreak(a, b);
+      })
+      .map(({ place }) => place);
+  }, [visiblePlaces, mapCenter, sortMode, sortSettings]);
   const selectPlace = useCallback((place) => {
     setSelected(place);
     setSelectedImageIndex(0);
@@ -997,6 +1048,8 @@ function App() {
           places={filtered}
           selectedPlaceId={selected?.id}
           defaultRating={appConfig.defaultRating}
+          sortMode={sortMode}
+          onSortModeChange={setSortMode}
           onClose={() => setDrawer(false)}
           onSelectPlace={selectPlace}
         />

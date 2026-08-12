@@ -18,6 +18,7 @@ import {
   savePlaceReactionCount,
   savePlaceReactionOption,
   saveReactionDefinition,
+  saveRecommendationSortSettings,
   setPublishedCover,
   signInAdmin,
   signOutAdmin,
@@ -66,6 +67,7 @@ export default function AdminPanel({
   const [categories, setCategories] = useState([]);
   const [fields, setFields] = useState([]);
   const [reactions, setReactions] = useState([]);
+  const [distanceWeight, setDistanceWeight] = useState(50);
   const [placeReactionOptions, setPlaceReactionOptions] = useState({});
   const [placeReactionSummaries, setPlaceReactionSummaries] = useState({});
   const [reactionCountEdits, setReactionCountEdits] = useState({});
@@ -112,6 +114,7 @@ export default function AdminPanel({
     setCategories(catalog.categories);
     setFields(catalog.fields);
     setReactions(catalog.reactions);
+    setDistanceWeight(catalog.sortSettings.distance_weight);
     setPlaceReactionOptions(optionsByPlace);
     setPlaceReactionSummaries(summariesByPlace);
   };
@@ -124,6 +127,19 @@ export default function AdminPanel({
       await loadAll();
     } catch (loginError) {
       setError(loginError.message || "登录失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveSortSettings = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const settings = await saveRecommendationSortSettings(distanceWeight);
+      setDistanceWeight(settings.distance_weight);
+      onDataChanged?.();
+    } catch (settingsError) {
+      setError(settingsError.message || "排序权重保存失败");
     } finally {
       setBusy(false);
     }
@@ -836,6 +852,7 @@ export default function AdminPanel({
               ["categories", "分类"],
               ["fields", "详情字段"],
               ["reactions", "表情"],
+              ["sorting", "排序"],
             ].map(([id, label]) => (
               <button
                 className={tab === id ? "active" : ""}
@@ -1114,6 +1131,32 @@ export default function AdminPanel({
                 </div>
               ))}
             </div>
+          )}
+          {tab === "sorting" && (
+            <section className="sort-settings">
+              <div className="sort-weight-summary">
+                <span>距离 {distanceWeight}%</span>
+                <span>响应 {100 - distanceWeight}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={distanceWeight}
+                aria-label="距离排序权重"
+                onChange={(event) =>
+                  setDistanceWeight(Number(event.target.value))
+                }
+              />
+              <button
+                className="copy-yaml"
+                onClick={saveSortSettings}
+                disabled={busy}
+              >
+                保存排序权重
+              </button>
+            </section>
           )}
         </div>
       )}

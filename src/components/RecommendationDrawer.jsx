@@ -2,6 +2,8 @@ export default function RecommendationDrawer({
   places,
   selectedPlaceId,
   defaultRating,
+  sortMode,
+  onSortModeChange,
   onClose,
   onSelectPlace,
 }) {
@@ -23,7 +25,17 @@ export default function RecommendationDrawer({
       </div>
       <div className="drawer-filters">
         <span>{places.length} 个地点</span>
-        <span>管理员审核通过</span>
+        <label className="sort-select">
+          <span>排序</span>
+          <select
+            value={sortMode}
+            onChange={(event) => onSortModeChange(event.target.value)}
+          >
+            <option value="distance">距离最近</option>
+            <option value="response">响应最多</option>
+            <option value="combined">综合推荐</option>
+          </select>
+        </label>
       </div>
       <div className="place-list">
         {places.map((place) => (

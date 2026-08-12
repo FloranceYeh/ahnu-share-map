@@ -4,6 +4,10 @@ const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabaseConfigured = Boolean(url && anonKey);
+export const defaultRecommendationSortSettings = {
+  distance_weight: 50,
+  response_weight: 50,
+};
 export const supabase = supabaseConfigured
   ? createClient(url, anonKey, {
       auth: {
@@ -93,7 +97,13 @@ export async function compressImageToWebp(
 
 export async function loadDynamicCatalog() {
   if (!supabase) return null;
-  const [categoriesResult, fieldsResult, placesResult, reactionsResult] =
+  const [
+    categoriesResult,
+    fieldsResult,
+    placesResult,
+    reactionsResult,
+    sortSettingsResult,
+  ] =
     await Promise.all([
     supabase
       .from("categories")
@@ -114,6 +124,11 @@ export async function loadDynamicCatalog() {
       .from("reaction_definitions")
       .select("value,emoji,label,sort_order")
       .order("sort_order"),
+    supabase
+      .from("recommendation_sort_settings")
+      .select("distance_weight,response_weight")
+      .eq("id", true)
+      .maybeSingle(),
   ]);
   const error =
     categoriesResult.error ||
@@ -135,6 +150,8 @@ export async function loadDynamicCatalog() {
     places: placesResult.data,
     reactions: reactionsResult.data,
     reactionSummaries: reactionSummaries || [],
+    sortSettings:
+      sortSettingsResult.data || defaultRecommendationSortSettings,
   };
 }
 
@@ -359,18 +376,43 @@ export async function deletePlace(id) {
 
 export async function loadAdminCatalog() {
   if (!supabase) throw new Error("Supabase 未配置");
-  const [categories, fields, reactions] = await Promise.all([
+  const [categories, fields, reactions, sortSettings] = await Promise.all([
     supabase.from("categories").select("*").order("sort_order"),
     supabase.from("detail_fields").select("*").order("sort_order"),
     supabase.from("reaction_definitions").select("*").order("sort_order"),
+    supabase
+      .from("recommendation_sort_settings")
+      .select("distance_weight,response_weight")
+      .eq("id", true)
+      .maybeSingle(),
   ]);
-  if (categories.error || fields.error || reactions.error)
-    throw categories.error || fields.error || reactions.error;
+  if (categories.error || fields.error || reactions.error || sortSettings.error)
+    throw categories.error || fields.error || reactions.error || sortSettings.error;
   return {
     categories: categories.data || [],
     fields: fields.data || [],
     reactions: reactions.data || [],
+    sortSettings: sortSettings.data || defaultRecommendationSortSettings,
   };
+}
+
+export async function saveRecommendationSortSettings(distanceWeight) {
+  if (!supabase) throw new Error("Supabase 未配置");
+  const distance = Number(distanceWeight);
+  if (!Number.isInteger(distance) || distance < 0 || distance > 100)
+    throw new Error("距离权重必须是 0 到 100 的整数");
+  const { data, error } = await supabase
+    .from("recommendation_sort_settings")
+    .upsert({
+      id: true,
+      distance_weight: distance,
+      response_weight: 100 - distance,
+      updated_at: new Date().toISOString(),
+    })
+    .select("distance_weight,response_weight")
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function loadPlaceReactionOptions(placeIds = []) {
