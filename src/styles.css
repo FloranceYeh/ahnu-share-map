@@ -31,6 +31,41 @@ button {
   overflow: hidden;
   background: #dce5d9;
 }
+.brand-lockup,
+.header-actions,
+.floating-tools,
+.map-stamp,
+.map-legend,
+.drawer-heading,
+.drawer-filters,
+.place-category,
+.rating,
+.tag-row,
+.arrow,
+.gallery-nav,
+.gallery-dots,
+.mobile-navigation-trigger,
+.place-reactions,
+.navigation-popover {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.brand-mark {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.place-title h3,
+.place-address,
+.quote,
+.drawer-content h2,
+.drawer-address,
+.detail-grid span,
+.detail-grid strong,
+.senior-note p,
+.highlight-list span {
+  -webkit-user-select: text;
+  user-select: text;
+}
 .fullscreen-map {
   position: absolute;
   inset: 0;

@@ -791,7 +791,12 @@ function App() {
       </div>
       <header className="floating-header">
         <div className="brand-lockup">
-          <img className="brand-mark" src="/logo.png" alt="" />
+          <img
+            className="brand-mark"
+            src="/logo.png"
+            alt=""
+            draggable="false"
+          />
           <div className="brand-copy">
             <p className="eyebrow">AHNU · LIFE MAP</p>
             <h1>安师生活地图</h1>
