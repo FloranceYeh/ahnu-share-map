@@ -1130,6 +1130,12 @@ function App() {
                 Florance.top ↗
               </a>
             </div>
+            <div className="author-detail">
+              <span>GitHub</span>
+              <a href="https://github.com/floranceyeh" target="_blank" rel="noreferrer">
+                FloranceYeh ↗
+              </a>
+            </div>
           </section>
         </div>
       )}
