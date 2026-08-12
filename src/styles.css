@@ -404,6 +404,16 @@ button {
   font-size: 20px;
   line-height: 1;
 }
+.dot-marker.is-pending {
+  width: 19px;
+  height: 19px;
+  background: rgba(179, 111, 67, 0.14);
+  border: 2px dashed var(--dot-color);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.9),
+    0 2px 8px rgba(35, 50, 40, 0.35);
+}
 .admin-heading-actions {
   display: flex;
   align-items: center;
@@ -1241,6 +1251,10 @@ button {
   background: #fffdf8;
   border: 1px solid #e0e6de;
   border-radius: 5px;
+}
+.pending-card.is-focused {
+  border-color: #b36f43;
+  box-shadow: 0 0 0 2px rgba(179, 111, 67, 0.18);
 }
 .pending-card h3 {
   margin: 0 0 6px;

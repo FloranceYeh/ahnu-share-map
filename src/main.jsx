@@ -14,7 +14,9 @@ import reactionYamlText from "./data/reactions.yml?raw";
 import {
   getSubmissionStatus,
   loadDynamicCatalog,
+  loadPlacesByStatus,
   mapDynamicPlace,
+  restoreAdminSession,
   submitPlace,
   supabaseConfigured,
 } from "./lib/supabase";
@@ -243,6 +245,7 @@ function AmapCanvas({
   resetSignal,
   resetCenter,
   focusPlace,
+  onPendingSelect,
 }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
@@ -311,21 +314,24 @@ function AmapCanvas({
           : place.color || appConfig.defaultCategoryColor;
         const marker = new window.AMap.Marker({
           position: place.coordinates,
-          content: `<span class="dot-marker ${selected?.id === place.id ? "is-active" : ""}" style="--dot-color:${color}"></span>`,
+          content: `<span class="dot-marker ${place.pending ? "is-pending" : ""} ${selected?.id === place.id ? "is-active" : ""}" style="--dot-color:${color}"></span>`,
           offset: new window.AMap.Pixel(-9, -9),
           zIndex: selected?.id === place.id ? 120 : 100,
           title: place.name,
         });
-        marker.on("click", () =>
-          place.pending
-            ? map.setZoomAndCenter(appConfig.mapZoom, place.coordinates)
-            : onSelect(place),
-        );
+        marker.on("click", () => {
+          if (place.pending) {
+            map.setZoomAndCenter(appConfig.mapZoom, place.coordinates);
+            onPendingSelect?.(place);
+          } else {
+            onSelect(place);
+          }
+        });
         map.add(marker);
       });
     if (selected && hasValidCoordinates(selected.coordinates))
       map.setCenter(selected.coordinates);
-  }, [visiblePlaces, previewPlaces, selected, onSelect]);
+  }, [visiblePlaces, previewPlaces, selected, onSelect, onPendingSelect]);
 
   useEffect(() => {
     if (resetSignal > 0 && mapRef.current)
@@ -534,6 +540,7 @@ function App() {
   const [adminPanel, setAdminPanel] = useState(false);
   const [adminPreviewPlaces, setAdminPreviewPlaces] = useState([]);
   const [adminFocus, setAdminFocus] = useState(null);
+  const [focusedPendingId, setFocusedPendingId] = useState(null);
   const [contactOpen, setContactOpen] = useState(false);
   const [lightboxImage, setLightboxImage] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
@@ -573,6 +580,12 @@ function App() {
       ]),
     });
   }, []);
+  const handlePendingSelect = useCallback((place) => {
+    setFocusedPendingId(place.id);
+    setAdminPanel(true);
+    setStatusPanel(false);
+    setDraft(null);
+  }, []);
   const [catalogPlaces, setCatalogPlaces] = useState(staticPlaces);
   const [catalogCategories, setCatalogCategories] = useState(categoryConfig);
   const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig);
@@ -586,6 +599,22 @@ function App() {
       // The selected campus still works when browser storage is unavailable.
     }
   }, [activeCampusId]);
+
+  useEffect(() => {
+    if (!supabaseConfigured) return undefined;
+    let cancelled = false;
+    restoreAdminSession()
+      .then((admin) => (admin ? loadPlacesByStatus("pending") : []))
+      .then((items) => {
+        if (!cancelled) handlePendingChange(items);
+      })
+      .catch(() => {
+        if (!cancelled) handlePendingChange([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [handlePendingChange]);
 
   useEffect(() => {
     if (!contactOpen) return undefined;
@@ -787,6 +816,7 @@ function App() {
           resetSignal={resetSignal}
           resetCenter={activeCampus.coordinates}
           focusPlace={adminFocus}
+          onPendingSelect={handlePendingSelect}
         />
         <div className="map-fallback" aria-hidden="true" />
       </div>
@@ -833,6 +863,7 @@ function App() {
               <button
                 className="utility-trigger"
                 onClick={() => {
+                  setFocusedPendingId(null);
                   setAdminPanel(true);
                   setStatusPanel(false);
                   setDraft(null);
@@ -927,12 +958,13 @@ function App() {
       {adminPanel && (
         <AdminPanel
           adminAddEnabled={adminAddEnabled}
+          focusedPendingId={focusedPendingId}
           onAdminAddPoint={setAdminAddEnabled}
           onClose={() => {
             setAdminPanel(false);
             setAdminAddEnabled(false);
-            setAdminPreviewPlaces([]);
             setAdminFocus(null);
+            setFocusedPendingId(null);
           }}
           onPendingChange={handlePendingChange}
           onPreviewPlace={handlePreviewPlace}

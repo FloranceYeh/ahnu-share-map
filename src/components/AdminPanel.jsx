@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   deleteCategory,
   deleteDetailField,
@@ -55,6 +55,7 @@ export default function AdminPanel({
   onPreviewPlace,
   onAdminAddPoint,
   adminAddEnabled,
+  focusedPendingId,
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,6 +78,7 @@ export default function AdminPanel({
   const [busy, setBusy] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [imagePreview, setImagePreview] = useState("");
+  const placeCardRefs = useRef(new Map());
 
   const loadAll = async () => {
     const [nextPending, nextPublished, catalog] = await Promise.all([
@@ -494,9 +496,20 @@ export default function AdminPanel({
       });
     return () => {
       cancelled = true;
-      onPendingChange?.([]);
     };
   }, [onPendingChange]);
+
+  useEffect(() => {
+    if (!focusedPendingId) return undefined;
+    setTab("pending");
+    const frame = window.requestAnimationFrame(() => {
+      placeCardRefs.current.get(focusedPendingId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusedPendingId, pending]);
 
   const updateEdit = (id, key, value) =>
     setEdits((current) => ({
@@ -571,8 +584,12 @@ export default function AdminPanel({
   };
   const renderPlaceEditor = (item, publishedMode = false) => (
     <article
-      className="pending-card"
+      className={`pending-card ${!publishedMode && focusedPendingId === item.id ? "is-focused" : ""}`}
       key={item.id}
+      ref={(element) => {
+        if (element) placeCardRefs.current.set(item.id, element);
+        else placeCardRefs.current.delete(item.id);
+      }}
       onClick={() => onPreviewPlace?.(item)}
     >
       <h3 className="admin-card-heading">
