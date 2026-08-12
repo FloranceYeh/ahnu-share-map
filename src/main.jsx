@@ -162,6 +162,20 @@ const CAMPUSES = parseYaml(campusYamlText)
 if (!CAMPUSES.length)
   throw new Error("src/data/campuses.yml must contain at least one campus");
 const DEFAULT_CAMPUS_ID = CAMPUSES[0].id;
+const ACTIVE_CAMPUS_STORAGE_KEY = "ahnu-share-map-active-campus";
+
+function getInitialCampusId() {
+  try {
+    const savedCampusId = window.localStorage.getItem(
+      ACTIVE_CAMPUS_STORAGE_KEY,
+    );
+    return CAMPUSES.some((campus) => campus.id === savedCampusId)
+      ? savedCampusId
+      : DEFAULT_CAMPUS_ID;
+  } catch {
+    return DEFAULT_CAMPUS_ID;
+  }
+}
 
 const distanceBetween = ([lngA, latA], [lngB, latB]) => {
   const earthRadius = 6371000;
@@ -505,7 +519,7 @@ function DebugForm({ draft, setDraft, onClose }) {
 }
 
 function App() {
-  const [activeCampusId, setActiveCampusId] = useState(DEFAULT_CAMPUS_ID);
+  const [activeCampusId, setActiveCampusId] = useState(getInitialCampusId);
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
@@ -564,6 +578,14 @@ function App() {
   const [catalogDetailFields, setCatalogDetailFields] = useState(detailConfig);
   const [catalogReactions, setCatalogReactions] = useState(reactionConfig);
   const [dataStatus, setDataStatus] = useState("static");
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ACTIVE_CAMPUS_STORAGE_KEY, activeCampusId);
+    } catch {
+      // The selected campus still works when browser storage is unavailable.
+    }
+  }, [activeCampusId]);
 
   useEffect(() => {
     if (!contactOpen) return undefined;
