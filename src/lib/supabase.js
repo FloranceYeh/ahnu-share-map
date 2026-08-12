@@ -4,7 +4,15 @@ const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabaseConfigured = Boolean(url && anonKey);
-export const supabase = supabaseConfigured ? createClient(url, anonKey) : null;
+export const supabase = supabaseConfigured
+  ? createClient(url, anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+      },
+    })
+  : null;
 
 const reactionVoterStorageKey = "place-reaction-voter-token";
 const requirePlaceId = (id) => {
@@ -250,8 +258,30 @@ export async function signInAdmin(email, password) {
   return data.user;
 }
 
+export async function restoreAdminSession() {
+  if (!supabase) return null;
+  const { data: sessionResult, error: sessionError } =
+    await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  const user = sessionResult.session?.user;
+  if (!user) return null;
+  const { data: membership, error: membershipError } = await supabase
+    .from("admin_users")
+    .select("email")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (membershipError) throw membershipError;
+  if (!membership) {
+    await supabase.auth.signOut();
+    return null;
+  }
+  return user;
+}
+
 export async function signOutAdmin() {
-  await supabase?.auth.signOut();
+  if (!supabase) return;
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
 
 export async function loadPendingPlaces() {

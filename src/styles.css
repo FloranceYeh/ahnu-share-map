@@ -369,6 +369,28 @@ button {
   font-size: 20px;
   line-height: 1;
 }
+.admin-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-logout {
+  height: 29px;
+  padding: 0 10px;
+  color: #a24e3f;
+  background: #f8e8e3;
+  border: 1px solid #e9c6bc;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.admin-logout:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+.admin-auth-status {
+  padding: 24px 0;
+  text-align: center;
+}
 .drawer-filters {
   display: flex;
   justify-content: space-between;

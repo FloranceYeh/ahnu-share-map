@@ -11,6 +11,7 @@ import {
   loadPlacesByStatus,
   removePendingImage,
   removePublishedImage,
+  restoreAdminSession,
   reviewPlace,
   saveCategory,
   saveDetailField,
@@ -74,6 +75,7 @@ export default function AdminPanel({
   const [newReaction, setNewReaction] = useState(blankReaction());
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [imagePreview, setImagePreview] = useState("");
 
   const loadAll = async () => {
@@ -120,6 +122,22 @@ export default function AdminPanel({
       await loadAll();
     } catch (loginError) {
       setError(loginError.message || "登录失败");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const logout = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await signOutAdmin();
+      setUser(null);
+      setPending([]);
+      setPublished([]);
+      onAdminAddPoint?.(false);
+      onPendingChange?.([]);
+    } catch (logoutError) {
+      setError(logoutError.message || "退出登录失败");
     } finally {
       setBusy(false);
     }
@@ -453,13 +471,32 @@ export default function AdminPanel({
   useEffect(() => {
     onPendingChange?.(pending);
   }, [pending, onPendingChange]);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    let cancelled = false;
+    restoreAdminSession()
+      .then(async (admin) => {
+        if (cancelled || !admin) return;
+        setUser(admin);
+        setBusy(true);
+        try {
+          await loadAll();
+        } catch (loadError) {
+          if (!cancelled) setError(loadError.message || "后台数据加载失败");
+        } finally {
+          if (!cancelled) setBusy(false);
+        }
+      })
+      .catch((sessionError) => {
+        if (!cancelled) setError(sessionError.message || "登录状态恢复失败");
+      })
+      .finally(() => {
+        if (!cancelled) setAuthChecking(false);
+      });
+    return () => {
+      cancelled = true;
       onPendingChange?.([]);
-      if (user) signOutAdmin();
-    },
-    [user, onPendingChange],
-  );
+    };
+  }, [onPendingChange]);
 
   const updateEdit = (id, key, value) =>
     setEdits((current) => ({
@@ -723,15 +760,24 @@ export default function AdminPanel({
           <p className="section-kicker">ADMIN CONSOLE</p>
           <h2>管理后台</h2>
         </div>
-        <button
-          className="drawer-close"
-          onClick={onClose}
-          aria-label="关闭后台"
-        >
-          ×
-        </button>
+        <div className="admin-heading-actions">
+          {user && (
+            <button className="admin-logout" onClick={logout} disabled={busy}>
+              退出登录
+            </button>
+          )}
+          <button
+            className="drawer-close"
+            onClick={onClose}
+            aria-label="关闭后台"
+          >
+            ×
+          </button>
+        </div>
       </div>
-      {!user ? (
+      {authChecking ? (
+        <p className="form-muted admin-auth-status">正在恢复登录状态…</p>
+      ) : !user ? (
         <div className="debug-form">
           <label>
             <span>管理员邮箱</span>
