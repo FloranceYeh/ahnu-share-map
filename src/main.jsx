@@ -1232,12 +1232,6 @@ function App() {
               </a></strong>
             </div>
             <div className="author-detail">
-              <span>QQ 群</span>
-              <strong><a href="https://qm.qq.com/q/mjcBzVPf90" target="_blank" rel="noreferrer">
-                1094990582
-              </a></strong>
-            </div>
-            <div className="author-detail">
               <span>个人主页</span>
               <a href="https://florance.top" target="_blank" rel="noreferrer">
                 Florance.top ↗
