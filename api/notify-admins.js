@@ -40,7 +40,7 @@ export default async function handler(request, response) {
     ),
   ].slice(0, MAX_RECIPIENTS);
   if (!recipients.length)
-    return response.status(400).json({ error: "没有有效的管理员邮箱" });
+    return response.status(200).json({ sent: 0, skipped: true });
 
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;

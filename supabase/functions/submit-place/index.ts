@@ -22,6 +22,7 @@ const MAX_BODY_BYTES = 64 * 1024;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IMAGE_PATH_PATTERN = /^[0-9a-f-]{36}\/[A-Za-z0-9._-]{1,180}$/i;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const corsHeaders = (origin: string | null) => {
   const headers: Record<string, string> = {
@@ -176,9 +177,17 @@ async function notifyAdmins(
       .from("admin_users")
       .select("email");
     if (error) throw error;
-    const recipients = (admins || [])
-      .map((item) => item.email)
-      .filter((email): email is string => typeof email === "string");
+    const recipients = [
+      ...new Set(
+        (admins || [])
+          .map((item) => item.email)
+          .filter(
+            (email): email is string =>
+              typeof email === "string" && EMAIL_PATTERN.test(email.trim()),
+          )
+          .map((email) => email.trim().toLowerCase()),
+      ),
+    ];
     if (!recipients.length) return;
     const response = await fetch(notificationUrl, {
       method: "POST",

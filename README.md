@@ -13,7 +13,7 @@ npm run dev
 
 ## Supabase 初始化
 
-1. 按编号顺序执行 `supabase/migrations` 中的全部 SQL 迁移（当前为 `001`–`005`）。
+1. 按编号顺序执行 `supabase/migrations` 中的全部 SQL 迁移（当前为 `001`–`007`）。
 2. 部署 Edge Function：`supabase functions deploy submit-place`。
 3. 配置 Turnstile Function secret：
 
@@ -30,11 +30,18 @@ insert into public.admin_users(user_id, email)
 select id, email from auth.users where email = '你的管理员邮箱';
 ```
 
-`admin_users` 支持多个管理员。每新增一个管理员账号，执行同一条 SQL 并替换邮箱即可；每位管理员都会收到新投稿通知。
+`admin_users` 支持多个管理员。每新增一个管理员账号，执行同一条 SQL 并替换邮箱即可。`email` 是可选的通知邮箱；管理员权限只由 `user_id` 判断。无需邮件通知的管理员可以执行：
+
+```sql
+insert into public.admin_users(user_id, email)
+select id, null from auth.users where email = '管理员登录邮箱';
+```
+
+管理员仍需使用 Supabase Authentication 中的邮箱密码账号登录。通知邮箱为 `NULL` 的管理员不会收到投稿邮件，也不会影响其他管理员正常收信。
 
 ## 管理员邮件通知
 
-新投稿写入成功后，`submit-place` 会读取 `admin_users` 中的全部邮箱，并调用 Vercel 的 `/api/notify-admins` 通过 QQ 邮箱 SMTP 发送通知。通知发送失败不会影响投稿写入。
+新投稿写入成功后，`submit-place` 会读取 `admin_users` 中所有有效的非空通知邮箱，并调用 Vercel 的 `/api/notify-admins` 通过 QQ 邮箱 SMTP 发送通知。没有有效收件人时会跳过邮件发送；通知失败也不会影响投稿写入。
 
 在 Vercel 项目环境变量中配置：
 
