@@ -95,6 +95,23 @@ export async function compressImageToWebp(
   }
 }
 
+async function blobToUploadBytes(blob) {
+  let buffer;
+  if (typeof blob.arrayBuffer === "function") {
+    buffer = await blob.arrayBuffer();
+  } else {
+    buffer = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error("图片读取失败"));
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+  const bytes = new Uint8Array(buffer);
+  if (!bytes.byteLength) throw new Error("投稿图片内容为空，请删除后重试");
+  return bytes;
+}
+
 export async function loadDynamicCatalog() {
   if (!supabase) return null;
   const [
@@ -742,10 +759,14 @@ export async function reviewPlace(
         .from("submission-images")
         .download(path);
       if (downloadError) throw downloadError;
+      const fileBytes = await blobToUploadBytes(file);
       const publicPath = `${placeId}/${path.split("/").pop()}`;
       const { error: uploadError } = await supabase.storage
         .from("place-images")
-        .upload(publicPath, file, { upsert: true, contentType: file.type });
+        .upload(publicPath, fileBytes, {
+          upsert: true,
+          contentType: file.type || "application/octet-stream",
+        });
       if (uploadError) throw uploadError;
       publicUrls.push(
         supabase.storage.from("place-images").getPublicUrl(publicPath).data
