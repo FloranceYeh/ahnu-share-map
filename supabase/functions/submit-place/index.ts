@@ -167,6 +167,7 @@ async function notifyAdmins(
   admin: ReturnType<typeof createClient>,
   submission: ReturnType<typeof normalizePayload>,
   queryCode: string,
+  categoryLabel = "",
 ) {
   const notificationUrl = Deno.env.get("ADMIN_NOTIFICATION_URL");
   const notificationSecret = Deno.env.get("ADMIN_NOTIFICATION_SECRET");
@@ -189,6 +190,33 @@ async function notifyAdmins(
       ),
     ];
     if (!recipients.length) return;
+    const imagePaths = Array.isArray(submission.custom_details.images)
+      ? submission.custom_details.images.filter(
+          (path): path is string => typeof path === "string",
+        )
+      : [];
+    let imageUrls: string[] = [];
+    if (imagePaths.length) {
+      const { data: signedImages, error: signedImagesError } = await admin.storage
+        .from("submission-images")
+        .createSignedUrls(imagePaths, 60 * 60 * 24 * 7);
+      if (signedImagesError) {
+        console.error("admin notification image signing failed", signedImagesError);
+      } else {
+        imageUrls = (signedImages || [])
+          .map((image) => image.signedUrl)
+          .filter((url): url is string => typeof url === "string");
+      }
+    }
+    const details = [
+      ["分类", categoryLabel || submission.category_id],
+      ["营业时间", submission.hours],
+      ["人均消费", submission.price],
+      ["适合场景", submission.best_for],
+      ...Object.entries(submission.custom_details)
+        .filter(([key, value]) => key !== "images" && typeof value === "string")
+        .map(([key, value]) => [key, value as string]),
+    ].filter(([, value]) => typeof value === "string" && value.trim());
     const response = await fetch(notificationUrl, {
       method: "POST",
       headers: {
@@ -203,6 +231,8 @@ async function notifyAdmins(
           recommendation: submission.recommendation,
           address: submission.address,
           coordinates: [submission.longitude, submission.latitude],
+          details,
+          images: imageUrls,
         },
       }),
     });
@@ -292,15 +322,17 @@ Deno.serve(async (request) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    let categoryLabel = "";
     if (normalizedPayload.category_id) {
       const { data: category, error: categoryError } = await admin
         .from("categories")
-        .select("id")
+        .select("id,label")
         .eq("id", normalizedPayload.category_id)
         .eq("is_active", true)
         .maybeSingle();
       if (categoryError) throw categoryError;
       if (!category) fail("所选分类不存在或已停用");
+      categoryLabel = category.label || "";
     }
     const { data: allowed, error: quotaError } = await admin.rpc(
       "consume_submission_quota",
@@ -340,7 +372,12 @@ Deno.serve(async (request) => {
       .select("query_code")
       .single();
     if (error) throw error;
-    await notifyAdmins(admin, normalizedPayload, data.query_code);
+    await notifyAdmins(
+      admin,
+      normalizedPayload,
+      data.query_code,
+      categoryLabel,
+    );
     return json({ queryCode: data.query_code }, 200, origin);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";

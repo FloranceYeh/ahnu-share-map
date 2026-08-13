@@ -41,7 +41,7 @@ select id, null from auth.users where email = '管理员登录邮箱';
 
 ## 管理员邮件通知
 
-新投稿写入成功后，`submit-place` 会读取 `admin_users` 中所有有效的非空通知邮箱，并调用 Vercel 的 `/api/notify-admins` 通过 QQ 邮箱 SMTP 发送通知。没有有效收件人时会跳过邮件发送；通知失败也不会影响投稿写入。
+新投稿写入成功后，`submit-place` 会读取 `admin_users` 中所有有效的非空通知邮箱，并调用 Vercel 的 `/api/notify-admins` 通过 QQ 邮箱 SMTP 发送通知。邮件包含地点详情、自定义字段与投稿图片预览；图片来自私有存储，链接有效期为 7 天。没有有效收件人时会跳过邮件发送；通知失败也不会影响投稿写入。
 
 在 Vercel 项目环境变量中配置：
 
