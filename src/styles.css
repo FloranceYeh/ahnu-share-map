@@ -1573,6 +1573,35 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
 .submission-panel .submission-success strong { color: var(--apple-blue); background: rgba(0, 122, 255, .08); border: 1px dashed rgba(0, 122, 255, .35); border-radius: 10px; }
 .submission-panel .submission-success button { color: var(--apple-blue); background: rgba(0, 122, 255, .10); border-radius: 10px; }
 .submission-panel .submission-success button:hover { background: rgba(0, 122, 255, .16); }
+
+/* Header actions sit above the map, so keep their hierarchy immediately
+   legible on both light and detailed map tiles. */
+.floating-header .author-trigger,
+.floating-header .utility-trigger,
+.floating-header .debug-trigger {
+  height: 38px;
+  padding: 0 12px;
+  color: #3a3a3c;
+  background: rgba(250, 250, 252, .82);
+  border: 1px solid rgba(60, 60, 67, .14);
+  border-radius: 11px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .10);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  font-size: 11px;
+  font-weight: 500;
+  transition: background-color .16s, border-color .16s, color .16s, transform .16s, box-shadow .16s;
+}
+.floating-header .author-trigger:hover,
+.floating-header .utility-trigger:hover,
+.floating-header .debug-trigger:hover { color: var(--apple-blue); background: rgba(255, 255, 255, .96); border-color: rgba(0, 122, 255, .32); box-shadow: 0 8px 22px rgba(0, 122, 255, .14); transform: translateY(-1px); }
+.floating-header .debug-trigger.active { color: #fff; background: #ff9500; border-color: #ff9500; }
+.floating-header .drawer-trigger { height: 42px; border-radius: 12px; }
+@media (max-width: 700px) {
+  .floating-header .author-trigger,
+  .floating-header .utility-trigger { height: 34px; padding: 0 9px; font-size: 10px; }
+  .floating-header .drawer-trigger { height: 38px; padding: 0 11px; }
+}
 @media (max-width: 700px) {
   .floating-header { top: 12px; left: 12px; right: 12px; }
   .floating-tools { top: 126px; left: 12px; width: calc(100% - 24px); }
