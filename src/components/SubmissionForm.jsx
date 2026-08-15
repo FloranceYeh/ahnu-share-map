@@ -104,7 +104,7 @@ export default function SubmissionForm({
   };
   if (queryCode)
     return (
-      <aside className="debug-panel">
+      <aside className="debug-panel submission-panel">
         <div className="drawer-heading">
           <div>
             <p className="section-kicker">
@@ -134,7 +134,7 @@ export default function SubmissionForm({
       </aside>
     );
   return (
-    <aside className="debug-panel">
+    <aside className="debug-panel submission-panel">
       <div className="drawer-heading">
         <div>
           <p className="section-kicker">

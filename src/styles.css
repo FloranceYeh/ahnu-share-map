@@ -1486,6 +1486,93 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   transition: background-color .16s, border-color .16s;
 }
 .image-upload-button:hover { background: rgba(0, 122, 255, .16); border-color: rgba(0, 122, 255, .35); }
+
+/* Admin console controls */
+.admin-panel .admin-heading-actions { display: flex; align-items: center; gap: 8px; }
+.admin-panel .admin-logout {
+  height: 30px;
+  padding: 0 10px;
+  color: #ff3b30;
+  background: rgba(255, 59, 48, .10);
+  border: 1px solid rgba(255, 59, 48, .16);
+  border-radius: 8px;
+  font-size: 11px;
+}
+.admin-panel .admin-logout:hover { background: rgba(255, 59, 48, .16); }
+.admin-panel .admin-add-trigger { height: 40px; margin: 2px 0 14px; color: #fff; background: var(--apple-blue); border-radius: 10px; box-shadow: 0 6px 16px rgba(0, 122, 255, .20); }
+.admin-panel .admin-add-trigger:hover { background: var(--apple-blue-dark); }
+.admin-panel .admin-add-trigger.active { color: #fff; background: #ff9500; box-shadow: 0 6px 16px rgba(255, 149, 0, .18); }
+.admin-panel .admin-tabs { gap: 3px; margin: 8px 0 16px; padding: 3px; background: rgba(118, 118, 128, .10); border: 0; border-radius: 10px; }
+.admin-panel .admin-tabs button { flex: 1 0 auto; min-height: 31px; padding: 0 9px; color: #6e6e73; border: 0; border-radius: 8px; font-size: 11px; }
+.admin-panel .admin-tabs button:hover { color: #1d1d1f; background: rgba(255, 255, 255, .62); }
+.admin-panel .admin-tabs button.active { color: #fff; background: var(--apple-blue); border: 0; font-weight: 600; }
+.admin-panel .pending-card { padding: 14px; background: rgba(255, 255, 255, .78); border-color: rgba(60, 60, 67, .14); border-radius: 14px; box-shadow: 0 4px 16px rgba(0, 0, 0, .06); }
+.admin-panel .pending-card h3 { color: #1d1d1f; }
+.admin-panel .pending-card textarea,
+.admin-panel .pending-card input,
+.admin-panel .config-row input,
+.admin-panel .reaction-config-row input { color: #1d1d1f; background: rgba(118, 118, 128, .08); border: 1px solid rgba(60, 60, 67, .14); border-radius: 8px; outline: 0; }
+.admin-panel .pending-card textarea:focus,
+.admin-panel .pending-card input:focus,
+.admin-panel .config-row input:focus,
+.admin-panel .reaction-config-row input:focus { border-color: rgba(0, 122, 255, .55); box-shadow: 0 0 0 3px rgba(0, 122, 255, .12); }
+.admin-panel .pending-card > div button:not(.danger-button),
+.admin-panel .config-row button:not(.danger-button),
+.admin-panel .reaction-config-row button:not(.danger-button) { color: #fff; background: var(--apple-blue); border-radius: 8px; }
+.admin-panel .pending-card > div button:not(.danger-button):hover,
+.admin-panel .config-row button:not(.danger-button):hover,
+.admin-panel .reaction-config-row button:not(.danger-button):hover { background: var(--apple-blue-dark); }
+.admin-panel .danger-button { color: #ff3b30 !important; background: rgba(255, 59, 48, .10) !important; border: 1px solid rgba(255, 59, 48, .14) !important; border-radius: 8px !important; }
+.admin-panel .danger-button:hover { background: rgba(255, 59, 48, .16) !important; }
+.admin-panel .admin-image-item { padding: 5px; background: rgba(118, 118, 128, .08); border-color: rgba(60, 60, 67, .14); border-radius: 10px; }
+.admin-panel .admin-image-item.is-cover { border-color: var(--apple-blue); box-shadow: 0 0 0 2px rgba(0, 122, 255, .14); }
+.admin-panel .admin-image-actions button { color: var(--apple-blue); background: rgba(0, 122, 255, .10); border-radius: 6px; }
+.admin-panel .admin-detail-fields { border-color: rgba(60, 60, 67, .14); }
+.admin-panel .admin-detail-fields input,
+.admin-panel .admin-detail-fields select { background: rgba(118, 118, 128, .08); border-color: rgba(60, 60, 67, .14); border-radius: 8px; }
+.admin-panel .config-row.new-row,
+.admin-panel .reaction-config-row.new-row { padding: 9px; background: rgba(0, 122, 255, .06); border: 1px dashed rgba(0, 122, 255, .24); border-radius: 10px; }
+.admin-panel .config-list { gap: 8px; }
+.admin-panel .config-row,
+.admin-panel .reaction-config-row { padding: 4px 0; }
+.admin-panel .sort-settings { padding: 14px; background: rgba(255, 255, 255, .72); border-color: rgba(60, 60, 67, .14); border-radius: 12px; }
+.admin-panel .sort-settings input[type="range"] { accent-color: var(--apple-blue); }
+.admin-panel .admin-place-reactions { border-color: rgba(60, 60, 67, .14); }
+.admin-panel .admin-place-reaction-option label { background: rgba(118, 118, 128, .10); border-color: rgba(60, 60, 67, .14); border-radius: 8px; }
+
+/* Public submission form */
+.submission-panel .drawer-heading { padding-bottom: 16px; border-bottom: 1px solid rgba(60, 60, 67, .12); }
+.submission-panel .drawer-heading h2 { font-size: 26px; }
+.submission-panel .debug-form { gap: 15px; padding-top: 16px; }
+.submission-panel .debug-form > label,
+.submission-panel .coordinate-fields > label,
+.submission-panel .optional-fields > label { gap: 6px; color: #6e6e73; font-size: 11px; }
+.submission-panel .debug-form > label > span,
+.submission-panel .coordinate-fields label > span,
+.submission-panel .optional-fields label > span { color: #6e6e73; font-size: 11px; font-weight: 500; }
+.submission-panel .debug-form input:not([type="file"]),
+.submission-panel .debug-form textarea,
+.submission-panel .debug-form select { min-height: 38px; color: #1d1d1f; background: rgba(118, 118, 128, .08); border-color: rgba(60, 60, 67, .14); border-radius: 10px; }
+.submission-panel .debug-form textarea { min-height: 92px; padding-top: 10px; resize: vertical; line-height: 1.5; }
+.submission-panel .debug-form input:not([type="file"]):focus,
+.submission-panel .debug-form textarea:focus,
+.submission-panel .debug-form select:focus { border-color: rgba(0, 122, 255, .55); box-shadow: 0 0 0 3px rgba(0, 122, 255, .12); }
+.submission-panel .coordinate-fields,
+.submission-panel .optional-fields { gap: 10px; }
+.submission-panel .optional-fields { padding-top: 14px; border-top: 1px solid rgba(60, 60, 67, .12); }
+.submission-panel .custom-heading { margin-top: 1px; padding-top: 14px; color: #3a3a3c; border-top: 1px solid rgba(60, 60, 67, .12); font-size: 12px; font-weight: 600; }
+.submission-panel .custom-heading button { color: var(--apple-blue); background: rgba(0, 122, 255, .10); border: 0; border-radius: 8px; font-size: 11px; }
+.submission-panel .custom-heading button:hover { background: rgba(0, 122, 255, .16); }
+.submission-panel .custom-fields { gap: 7px; }
+.submission-panel .custom-row input { min-height: 34px; }
+.submission-panel .custom-row > button { width: 30px; height: 34px; color: #ff3b30; background: rgba(255, 59, 48, .10); border: 0; border-radius: 8px; }
+.submission-panel .turnstile-box { min-height: 70px; padding: 8px; background: rgba(118, 118, 128, .06); border: 1px solid rgba(60, 60, 67, .10); border-radius: 10px; }
+.submission-panel .copy-yaml { min-height: 42px; margin-top: 2px; border-radius: 11px; font-size: 13px; font-weight: 600; }
+.submission-panel .yaml-preview { min-height: 90px; color: #6e6e73; background: rgba(118, 118, 128, .06); border: 1px solid rgba(60, 60, 67, .10); border-radius: 10px; }
+.submission-panel .submission-success { padding-top: 20px; }
+.submission-panel .submission-success strong { color: var(--apple-blue); background: rgba(0, 122, 255, .08); border: 1px dashed rgba(0, 122, 255, .35); border-radius: 10px; }
+.submission-panel .submission-success button { color: var(--apple-blue); background: rgba(0, 122, 255, .10); border-radius: 10px; }
+.submission-panel .submission-success button:hover { background: rgba(0, 122, 255, .16); }
 @media (max-width: 700px) {
   .floating-header { top: 12px; left: 12px; right: 12px; }
   .floating-tools { top: 126px; left: 12px; width: calc(100% - 24px); }
