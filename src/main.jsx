@@ -1299,7 +1299,12 @@ function App() {
       )}
       <ImageLightbox
         src={lightboxImage}
+        images={selectedImages}
         alt={selected?.name || "地点图片"}
+        onChange={(image, index) => {
+          setLightboxImage(image);
+          setSelectedImageIndex(index);
+        }}
         onClose={() => setLightboxImage("")}
       />
     </main>

@@ -1,3 +1,11 @@
+import { useEffect, useRef, useState } from "react";
+
+const SORT_OPTIONS = [
+  ["distance", "距离最近"],
+  ["response", "响应最多"],
+  ["combined", "综合推荐"],
+];
+
 export default function RecommendationDrawer({
   places,
   selectedPlaceId,
@@ -7,6 +15,16 @@ export default function RecommendationDrawer({
   onClose,
   onSelectPlace,
 }) {
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef(null);
+  useEffect(() => {
+    const close = (event) => {
+      if (!sortRef.current?.contains(event.target)) setSortOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+  const currentSortLabel = SORT_OPTIONS.find(([value]) => value === sortMode)?.[1] || "综合推荐";
   return (
     <aside className="recommendation-drawer">
       <div className="drawer-handle" />
@@ -25,17 +43,38 @@ export default function RecommendationDrawer({
       </div>
       <div className="drawer-filters">
         <span>{places.length} 个地点</span>
-        <label className="sort-select">
+        <div className="sort-select" ref={sortRef}>
           <span>排序</span>
-          <select
-            value={sortMode}
-            onChange={(event) => onSortModeChange(event.target.value)}
+          <button
+            type="button"
+            className={`apple-select-trigger ${sortOpen ? "is-open" : ""}`}
+            aria-haspopup="listbox"
+            aria-expanded={sortOpen}
+            onClick={() => setSortOpen((open) => !open)}
           >
-            <option value="distance">距离最近</option>
-            <option value="response">响应最多</option>
-            <option value="combined">综合推荐</option>
-          </select>
-        </label>
+            {currentSortLabel}<span aria-hidden="true">⌄</span>
+          </button>
+          {sortOpen && (
+            <div className="apple-select-menu" role="listbox" aria-label="排序方式">
+              {SORT_OPTIONS.map(([value, label]) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={sortMode === value}
+                  className={sortMode === value ? "is-selected" : ""}
+                  key={value}
+                  onClick={() => {
+                    onSortModeChange(value);
+                    setSortOpen(false);
+                  }}
+                >
+                  {label}
+                  {sortMode === value && <span aria-hidden="true">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="place-list">
         {places.map((place) => (

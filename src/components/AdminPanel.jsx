@@ -79,7 +79,7 @@ export default function AdminPanel({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
-  const [imagePreview, setImagePreview] = useState("");
+  const [imagePreview, setImagePreview] = useState({ src: "", images: [] });
   const placeCardRefs = useRef(new Map());
 
   const loadAll = async () => {
@@ -540,6 +540,9 @@ export default function AdminPanel({
           ? [item.cover_url]
           : []
       : item.imageUrls || [];
+    const previewImages = images.map((image) =>
+      publishedMode ? image : image.url,
+    );
     return (
       <div
         className="admin-image-manager"
@@ -556,7 +559,13 @@ export default function AdminPanel({
                   className={`admin-image-item ${isCover ? "is-cover" : ""}`}
                   key={imageKey}
                 >
-                  <img src={url} alt="" onClick={() => setImagePreview(url)} />
+                  <img
+                    src={url}
+                    alt=""
+                    onClick={() =>
+                      setImagePreview({ src: url, images: previewImages })
+                    }
+                  />
                   <div className="admin-image-actions">
                     {publishedMode && (
                       <button
@@ -1160,6 +1169,15 @@ export default function AdminPanel({
           )}
         </div>
       )}
+      <ImageLightbox
+        src={imagePreview.src}
+        images={imagePreview.images}
+        alt="地点图片"
+        onChange={(src) =>
+          setImagePreview((current) => ({ ...current, src }))
+        }
+        onClose={() => setImagePreview({ src: "", images: [] })}
+      />
     </aside>
   );
 }
