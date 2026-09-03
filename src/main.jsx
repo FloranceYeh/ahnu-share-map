@@ -211,6 +211,26 @@ const categories = [
   { id: "all", label: appConfig.allCategoryLabel },
   ...categoryConfig,
 ];
+const pageConfig = [
+  { id: "map", label: "地图", href: "/" },
+  { id: "detail", label: "详细介绍", href: "/?page=detail" },
+  { id: "admin", label: "管理", href: "/?page=admin" },
+];
+const developerConfig = [
+  { name: "叶树忠", role: "项目负责人，开发+审核+宣传", major: "教育技术学", grade: "25级" },
+  { name: "王宇晨", role: "开发+审核+宣传", major: "网络空间安全", grade: "24级" },
+  { name: "疏程飞", role: "采集+开发学习", major: "软件工程", grade: "25级" },
+  { name: "田琬琪", role: "审核+采集", major: "大数据", grade: "24级" },
+  { name: "鲍富鑫", role: "采集", major: "网络空间安全", grade: "25级" },
+  { name: "汪子怡", role: "采集+审核", major: "教育学", grade: "25级" },
+  { name: "程维", role: "采集＋审核", major: "网络空间安全", grade: "25级" },
+  { name: "崔谢子涵", role: "美工+开发", major: "", grade: "26级" },
+];
+
+function getInitialPage() {
+  const page = new URLSearchParams(window.location.search).get("page");
+  return page === "detail" || page === "admin" ? page : "map";
+}
 
 const staticPlaces = [];
 
@@ -525,7 +545,337 @@ function DebugForm({ draft, setDraft, onClose }) {
   );
 }
 
+function SiteHeader({
+  activePage,
+  onNavigate,
+  onGuideOpen,
+  onContactOpen,
+  children,
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = (event, page) => {
+    event.preventDefault();
+    setMenuOpen(false);
+    onNavigate(page);
+  };
+  return (
+    <header className={`site-header ${menuOpen ? "is-open" : ""}`}>
+      <a
+        className="site-brand"
+        href="/"
+        onClick={(event) => navigate(event, "map")}
+      >
+        <img className="brand-mark" src="/logo.png" alt="" draggable="false" />
+        <div className="brand-copy">
+          <p className="eyebrow">AHNU · LIFE MAP</p>
+          <strong>安师生活地图</strong>
+        </div>
+      </a>
+      <nav className="main-navigation" aria-label="主菜单">
+        {pageConfig.map((item) => (
+          <a
+            className={activePage === item.id ? "active" : ""}
+            href={item.href}
+            key={item.id}
+            onClick={(event) => navigate(event, item.id)}
+          >
+            {item.label}
+          </a>
+        ))}
+        {activePage === "map" && (
+          <div className="mobile-navigation-actions">
+            <button type="button" onClick={onGuideOpen}>重看引导</button>
+            <button type="button" onClick={onContactOpen}>联系作者</button>
+          </div>
+        )}
+      </nav>
+      <div className="header-actions">
+        {children}
+        <button
+          className="menu-trigger"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? "关闭菜单" : "打开菜单"}
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? "×" : "☰"}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function ControlPreview({ type }) {
+  if (["map", "detail", "admin"].includes(type)) {
+    const label = type === "map"
+      ? "地图"
+      : type === "detail"
+        ? "详细介绍"
+        : "管理";
+    return <span className="control-menu-item">{label}</span>;
+  }
+  if (type === "search")
+    return (
+      <span className="control-search">
+        <span aria-hidden="true">⌕</span>
+        <span>搜店面或关键词</span>
+      </span>
+    );
+  if (type === "categories")
+    return (
+      <span className="control-categories">
+        {categories.slice(0, 4).map((category, index) => (
+          <span className={index === 0 ? "active" : ""} key={category.id}>
+            {category.label}
+          </span>
+        ))}
+      </span>
+    );
+  if (type === "marker")
+    return <span className="control-marker"><i />地图圆点</span>;
+  if (type === "campus")
+    return (
+      <span className="control-campus">
+        <strong>赭山校区</strong>
+        <small>点我切换至花津校区</small>
+      </span>
+    );
+  if (type === "submit")
+    return <span className="control-action">＋ <b>投稿地点</b></span>;
+  if (type === "query")
+    return <span className="control-action">查投稿</span>;
+  if (type === "recommendations")
+    return (
+      <span className="control-action primary">
+        <span aria-hidden="true">☷</span>推荐地点 <i>12</i>
+      </span>
+    );
+  if (type === "sort")
+    return <span className="control-select">综合推荐 <span>⌄</span></span>;
+  if (type === "place")
+    return (
+      <span className="control-place">
+        <span><b>镜湖边小店</b><small>赭山校区东门</small></span>
+        <i>↗</i>
+      </span>
+    );
+  if (type === "gallery")
+    return (
+      <span className="control-gallery">
+        <b>‹</b><img src="/logo.png" alt="" /><b>›</b>
+      </span>
+    );
+  if (type === "navigation")
+    return <span className="control-navigation">一键导航</span>;
+  if (type === "reactions")
+    return (
+      <span className="control-reactions">
+        <span>👍 <b>12</b></span><span>❤️ <b>8</b></span>
+      </span>
+    );
+  return <span className="control-close">×</span>;
+}
+
+function DetailPage({ onNavigate }) {
+  return (
+    <main className="content-page">
+      <SiteHeader activePage="detail" onNavigate={onNavigate}>
+        <a
+          className="back-to-map"
+          href="/"
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate("map");
+          }}
+        >
+          返回地图
+        </a>
+      </SiteHeader>
+      <section className="detail-intro">
+        <div className="detail-title">
+          <p className="section-kicker">MAP CONTROLS</p>
+          <h1>安师生活地图</h1>
+          <p>详细功能介绍</p>
+        </div>
+        <img src="/logo.png" alt="安师生活地图 Logo" />
+      </section>
+      <section className="detail-section">
+        <div className="detail-section-heading">
+          <p className="section-kicker">TOP MENU</p>
+          <h2>顶部菜单</h2>
+        </div>
+        <div className="control-list">
+          <div>
+            <ControlPreview type="map" />
+            <p>返回公共地图主页，继续搜索、筛选和查看地点。</p>
+          </div>
+          <div>
+            <ControlPreview type="detail" />
+            <p>打开当前说明页，集中查看地图中所有按钮的用途。</p>
+          </div>
+          <div>
+            <ControlPreview type="admin" />
+            <p>进入独立的管理登录页。登录后用于审核投稿、维护地点、分类、详情字段、表情和推荐排序。</p>
+          </div>
+        </div>
+      </section>
+      <section className="detail-section">
+        <div className="detail-section-heading">
+          <p className="section-kicker">FIND A PLACE</p>
+          <h2>查找地点</h2>
+        </div>
+        <div className="control-list">
+          <div>
+            <ControlPreview type="search" />
+            <p>输入店名、地址、标签或推荐内容中的关键词，地图圆点和推荐列表会同步筛选。</p>
+          </div>
+          <div>
+            <ControlPreview type="categories" />
+            <p>只显示对应分类的地点；选择“全部”恢复显示当前校区附近的所有地点。</p>
+          </div>
+          <div>
+            <ControlPreview type="marker" />
+            <p>点击圆点打开地点详情，地图会把所选地点移到视野中心。圆点颜色与地点分类一致。</p>
+          </div>
+          <div>
+            <ControlPreview type="campus" />
+            <p>点击左下角校区按钮，在赭山校区与花津校区之间切换，并把地图重置到对应校区中心。</p>
+          </div>
+        </div>
+      </section>
+      <section className="detail-section">
+        <div className="detail-section-heading">
+          <p className="section-kicker">SHARE &amp; CHECK</p>
+          <h2>投稿与查询</h2>
+        </div>
+        <div className="control-list">
+          <div>
+            <ControlPreview type="submit" />
+            <p>进入地图选点状态。点击地图确定经纬度后，可填写地名、推荐理由、分类、详情字段和图片并提交审核。</p>
+          </div>
+          <div>
+            <ControlPreview type="query" />
+            <p>输入投稿成功后获得的查询码，查看该地点当前处于审核中、已通过还是已驳回状态。</p>
+          </div>
+        </div>
+      </section>
+      <section className="detail-section">
+        <div className="detail-section-heading">
+          <p className="section-kicker">RECOMMENDATIONS</p>
+          <h2>推荐地点</h2>
+        </div>
+        <div className="control-list">
+          <div>
+            <ControlPreview type="recommendations" />
+            <p>打开地点列表，按钮右侧数字表示当前搜索和分类条件下可见的地点数量。</p>
+          </div>
+          <div>
+            <ControlPreview type="sort" />
+            <p>可按距离最近、响应最多或综合推荐排列。综合推荐会同时考虑地图中心距离和表情响应数量。</p>
+          </div>
+          <div>
+            <ControlPreview type="place" />
+            <p>展示地点封面、分类、地址、标签、推荐理由和已有响应；点击后回到地图并打开完整详情。</p>
+          </div>
+        </div>
+      </section>
+      <section className="detail-section">
+        <div className="detail-section-heading">
+          <p className="section-kicker">PLACE DETAILS</p>
+          <h2>地点详情</h2>
+        </div>
+        <div className="control-list">
+          <div>
+            <ControlPreview type="gallery" />
+            <p>点击图片查看大图；地点有多张图片时，使用左右箭头或下方圆点切换。</p>
+          </div>
+          <div>
+            <ControlPreview type="navigation" />
+            <p>在手机端选择高德、腾讯、百度或苹果地图，并把当前地点坐标交给对应导航软件。</p>
+          </div>
+          <div>
+            <ControlPreview type="reactions" />
+            <p>用表情回应推荐。每台设备对同一地点保留一个选择，再次点击已选表情即可取消。</p>
+          </div>
+          <div>
+            <ControlPreview type="close" />
+            <p>关闭当前推荐列表、地点详情、投稿表单或弹窗，继续操作地图。</p>
+          </div>
+        </div>
+      </section>
+      <section className="detail-footer">
+        <div>
+          <p className="section-kicker">OPEN MAP</p>
+          <h2>回到地图试试这些按钮</h2>
+        </div>
+        <a
+          href="/"
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate("map");
+          }}
+        >
+          打开地图
+        </a>
+      </section>
+      <section className="developer-team">
+        <div>
+          <p className="section-kicker">DEVELOPERS</p>
+          <h2>开发者团队</h2>
+        </div>
+        <div className="developer-list">
+          {developerConfig.map((member) => (
+            <div key={member.name}>
+              <strong>{member.name}</strong>
+              <span>{member.role}</span>
+              <span>{member.major}</span>
+              <span>{member.grade}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ManagementPage({ onNavigate, adminProps }) {
+  return (
+    <main className="management-page">
+      <SiteHeader activePage="admin" onNavigate={onNavigate}>
+        <a
+          className="back-to-map"
+          href="/"
+          onClick={(event) => {
+            event.preventDefault();
+            onNavigate("map");
+          }}
+        >
+          返回地图
+        </a>
+      </SiteHeader>
+      <div className="admin-stage">
+        <section className="admin-introduction">
+          <img src="/logo.png" alt="" />
+          <p className="section-kicker">MANAGEMENT</p>
+          <h1>管理后台</h1>
+          <a
+            href="/"
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate("map");
+            }}
+          >
+            ← 返回地图
+          </a>
+        </section>
+        <AdminPanel {...adminProps} pageMode />
+      </div>
+    </main>
+  );
+}
+
 function App() {
+  const [activePage, setActivePage] = useState(getInitialPage);
   const [activeCampusId, setActiveCampusId] = useState(getInitialCampusId);
   const [activeCategory, setActiveCategory] = useState("all");
   const [search, setSearch] = useState("");
@@ -546,6 +896,12 @@ function App() {
   const [lightboxImage, setLightboxImage] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
   const [navigationMenuOpen, setNavigationMenuOpen] = useState(false);
+  const navigateToPage = useCallback((page) => {
+    const href = pageConfig.find((item) => item.id === page)?.href || "/";
+    window.history.pushState(null, "", href);
+    setActivePage(page);
+    window.scrollTo(0, 0);
+  }, []);
   const activeCampusIndex = CAMPUSES.findIndex(
     (campus) => campus.id === activeCampusId,
   );
@@ -604,6 +960,20 @@ function App() {
       // The selected campus still works when browser storage is unavailable.
     }
   }, [activeCampusId]);
+
+  useEffect(() => {
+    const handlePopState = () => setActivePage(getInitialPage());
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    document.title = activePage === "detail"
+      ? "详细介绍 · 安师生活地图"
+      : activePage === "admin"
+        ? "管理后台 · 安师生活地图"
+        : "安师生活地图 · 学长分享";
+  }, [activePage]);
 
   useEffect(() => {
     if (!supabaseConfigured) return undefined;
@@ -851,6 +1221,30 @@ function App() {
     ];
   }, [selected]);
 
+  if (activePage === "detail")
+    return <DetailPage onNavigate={navigateToPage} />;
+  if (activePage === "admin")
+    return (
+      <ManagementPage
+        onNavigate={navigateToPage}
+        adminProps={{
+          adminAddEnabled,
+          focusedPendingId,
+          onAdminAddPoint: (enabled) => {
+            setAdminAddEnabled(enabled);
+            if (enabled) navigateToPage("map");
+          },
+          onClose: () => navigateToPage("map"),
+          onPendingChange: handlePendingChange,
+          onPreviewPlace: (item) => {
+            handlePreviewPlace(item);
+            navigateToPage("map");
+          },
+          onDataChanged: refreshCatalog,
+        }}
+      />
+    );
+
   return (
     <main className="app-shell">
       <div className="fullscreen-map">
@@ -871,91 +1265,61 @@ function App() {
         />
         <div className="map-fallback" aria-hidden="true" />
       </div>
-      <header className="floating-header">
-        <div className="brand-lockup">
-          <img
-            className="brand-mark"
-            src="/logo.png"
-            alt=""
-            draggable="false"
-          />
-          <div className="brand-copy">
-            <p className="eyebrow">AHNU · LIFE MAP</p>
-            <h1>安师生活地图</h1>
-          </div>
-          <div className="brand-actions">
-            <button
-              className="author-trigger"
-              onClick={() => setGuideOpen(true)}
-            >
-              重看引导
-            </button>
-            <button
-              className="author-trigger"
-              onClick={() => setContactOpen(true)}
-            >
-              联系作者
-            </button>
-          </div>
-        </div>
-        <div className="header-actions">
-          {supabaseConfigured && (
-            <>
-              <button
-                className="utility-trigger"
-                onClick={() => {
-                  setStatusPanel(true);
-                  setAdminPanel(false);
-                  setDraft(null);
-                }}
-              >
-                查投稿
-              </button>
-              <button
-                className="utility-trigger"
-                onClick={() => {
-                  setFocusedPendingId(null);
-                  setAdminPanel(true);
-                  setStatusPanel(false);
-                  setDraft(null);
-                }}
-              >
-                管理
-              </button>
-            </>
-          )}
-          {((supabaseConfigured && appConfig.enablePublicSubmissions) ||
-            (!supabaseConfigured && appConfig.enableDebugAddPoint)) && (
-            <button
-              className={`debug-trigger ${debugEnabled ? "active" : ""}`}
-              onClick={() => {
-                setDebugEnabled((value) => !value);
-                setDraft(null);
-              }}
-            >
-              ＋
-              <span>
-                {debugEnabled
-                  ? "取消加点"
-                  : supabaseConfigured
-                    ? "投稿地点"
-                    : "调试录点"}
-              </span>
-            </button>
-          )}
+      <SiteHeader
+        activePage="map"
+        onNavigate={navigateToPage}
+        onGuideOpen={() => setGuideOpen(true)}
+        onContactOpen={() => setContactOpen(true)}
+      >
+        <button className="author-trigger" onClick={() => setGuideOpen(true)}>
+          重看引导
+        </button>
+        <button className="author-trigger" onClick={() => setContactOpen(true)}>
+          联系作者
+        </button>
+        {supabaseConfigured && (
           <button
-            className="drawer-trigger"
+            className="utility-trigger"
             onClick={() => {
-              setDrawer(true);
-              setSelected(null);
+              setStatusPanel(true);
+              setAdminPanel(false);
               setDraft(null);
             }}
           >
-            <span className="trigger-icon">☷</span>推荐地点{" "}
-            <b>{filtered.length}</b>
+            查投稿
           </button>
-        </div>
-      </header>
+        )}
+        {((supabaseConfigured && appConfig.enablePublicSubmissions) ||
+          (!supabaseConfigured && appConfig.enableDebugAddPoint)) && (
+          <button
+            className={`debug-trigger ${debugEnabled ? "active" : ""}`}
+            onClick={() => {
+              setDebugEnabled((value) => !value);
+              setDraft(null);
+            }}
+          >
+            ＋
+            <span>
+              {debugEnabled
+                ? "取消加点"
+                : supabaseConfigured
+                  ? "投稿地点"
+                  : "调试录点"}
+            </span>
+          </button>
+        )}
+        <button
+          className="drawer-trigger"
+          onClick={() => {
+            setDrawer(true);
+            setSelected(null);
+            setDraft(null);
+          }}
+        >
+          <span className="trigger-icon">☷</span>推荐地点{" "}
+          <b>{filtered.length}</b>
+        </button>
+      </SiteHeader>
       <section className="floating-tools">
         <label className="search-box">
           <span>⌕</span>

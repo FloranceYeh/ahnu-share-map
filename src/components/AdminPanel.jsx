@@ -57,6 +57,7 @@ export default function AdminPanel({
   onAdminAddPoint,
   adminAddEnabled,
   focusedPendingId,
+  pageMode = false,
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -796,7 +797,9 @@ export default function AdminPanel({
   );
 
   return (
-    <aside className="debug-panel admin-panel">
+    <aside
+      className={`debug-panel admin-panel ${pageMode ? "admin-page-panel" : ""}`}
+    >
       <div className="drawer-heading">
         <div>
           <p className="section-kicker">ADMIN CONSOLE</p>
