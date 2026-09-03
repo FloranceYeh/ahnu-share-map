@@ -2620,8 +2620,7 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
 }
 .detail-intro,
 .detail-section,
-.detail-footer,
-.developer-team {
+.detail-footer {
   width: min(1040px, calc(100% - 48px));
   margin: 0 auto;
 }
@@ -2659,26 +2658,22 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   border-radius: 34px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.14);
 }
-.detail-section,
-.developer-team {
+.detail-section {
   display: grid;
   grid-template-columns: minmax(180px, 0.42fr) minmax(0, 1fr);
   gap: 64px;
   padding: 54px 0;
   border-bottom: 1px solid var(--line);
 }
-.detail-section-heading h2,
-.developer-team h2 {
+.detail-section-heading h2 {
   margin: 9px 0 0;
 }
 .detail-section h2,
-.detail-footer h2,
-.developer-team h2 {
+.detail-footer h2 {
   font-size: 25px;
   letter-spacing: 0;
 }
-.control-list,
-.developer-list {
+.control-list {
   border-top: 1px solid var(--line);
 }
 .control-list > div {
@@ -2962,27 +2957,6 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
 .detail-footer a:hover {
   background: var(--apple-blue-dark);
 }
-.developer-team {
-  padding: 58px 0 72px;
-  border-top: 1px solid var(--line);
-  border-bottom: 0;
-}
-.developer-list > div {
-  min-height: 76px;
-  display: grid;
-  grid-template-columns: minmax(72px, 0.7fr) minmax(180px, 1.6fr) minmax(120px, 1fr) minmax(72px, 0.6fr);
-  align-items: center;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
-}
-.developer-list strong {
-  font-size: 13px;
-}
-.developer-list span {
-  color: var(--muted);
-  font-size: 12px;
-}
 .management-page {
   padding-top: 82px;
   background: #e9e9ee;
@@ -3202,8 +3176,7 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   }
   .detail-intro,
   .detail-section,
-  .detail-footer,
-  .developer-team {
+  .detail-footer {
     width: calc(100% - 32px);
   }
   .detail-intro {
@@ -3224,15 +3197,13 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     margin-top: 30px;
     border-radius: 18px;
   }
-  .detail-section,
-  .developer-team {
+  .detail-section {
     grid-template-columns: 1fr;
     gap: 22px;
     padding: 38px 0;
   }
   .detail-section h2,
-  .detail-footer h2,
-  .developer-team h2 {
+  .detail-footer h2 {
     font-size: 21px;
   }
   .control-list > div {
@@ -3254,30 +3225,6 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     align-items: flex-start;
     flex-direction: column;
     padding: 46px 0 58px;
-  }
-  .developer-team {
-    padding: 40px 0 54px;
-  }
-  .developer-list > div {
-    min-height: 0;
-    grid-template-columns: 1fr auto;
-    gap: 5px;
-    padding: 15px 0;
-  }
-  .developer-list > div > span:nth-child(2) {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-  .developer-list > div > span:nth-child(3) {
-    grid-column: 1 / -1;
-    grid-row: 3;
-  }
-  .developer-list > div > span:nth-child(3):empty {
-    display: none;
-  }
-  .developer-list > div > span:nth-child(4) {
-    grid-column: 2;
-    grid-row: 1;
   }
   .management-page {
     padding-top: 80px;

@@ -216,16 +216,6 @@ const pageConfig = [
   { id: "detail", label: "详细介绍", href: "/?page=detail" },
   { id: "admin", label: "管理", href: "/?page=admin" },
 ];
-const developerConfig = [
-  { name: "叶树忠", role: "项目负责人，开发+审核+宣传", major: "教育技术学", grade: "25级" },
-  { name: "王宇晨", role: "开发+审核+宣传", major: "网络空间安全", grade: "24级" },
-  { name: "疏程飞", role: "采集+开发学习", major: "软件工程", grade: "25级" },
-  { name: "田琬琪", role: "审核+采集", major: "大数据", grade: "24级" },
-  { name: "鲍富鑫", role: "采集", major: "网络空间安全", grade: "25级" },
-  { name: "汪子怡", role: "采集+审核", major: "教育学", grade: "25级" },
-  { name: "程维", role: "采集＋审核", major: "网络空间安全", grade: "25级" },
-  { name: "崔谢子涵", role: "美工+开发", major: "", grade: "26级" },
-];
 
 function getInitialPage() {
   const page = new URLSearchParams(window.location.search).get("page");
@@ -817,22 +807,6 @@ function DetailPage({ onNavigate }) {
         >
           打开地图
         </a>
-      </section>
-      <section className="developer-team">
-        <div>
-          <p className="section-kicker">DEVELOPERS</p>
-          <h2>开发者团队</h2>
-        </div>
-        <div className="developer-list">
-          {developerConfig.map((member) => (
-            <div key={member.name}>
-              <strong>{member.name}</strong>
-              <span>{member.role}</span>
-              <span>{member.major}</span>
-              <span>{member.grade}</span>
-            </div>
-          ))}
-        </div>
       </section>
     </main>
   );
