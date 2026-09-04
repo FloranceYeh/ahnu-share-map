@@ -3080,12 +3080,9 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     padding: 7px 8px;
-    /* Keep the mobile menu readable over the map and avoid translucent overlap. */
-    background: var(--surface-solid);
+    background: #ffffff;
     border: 1px solid var(--line);
     border-radius: 16px;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
   .site-brand .brand-mark {
     width: 36px;
@@ -3102,13 +3099,11 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     right: 0;
     left: auto;
     display: none;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 5px;
-    background: var(--surface-solid);
+    background: #ffffff;
     border: 1px solid var(--line);
     box-shadow: var(--shadow);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
   .site-header.is-open .main-navigation {
     display: grid;

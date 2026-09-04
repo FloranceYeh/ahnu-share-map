@@ -214,7 +214,6 @@ const categories = [
 const pageConfig = [
   { id: "map", label: "地图", href: "/" },
   { id: "detail", label: "详细介绍", href: "/?page=detail" },
-  { id: "admin", label: "管理", href: "/?page=admin" },
 ];
 
 function getInitialPage() {
@@ -702,10 +701,6 @@ function DetailPage({ onNavigate }) {
           <div>
             <ControlPreview type="detail" />
             <p>打开当前说明页，集中查看地图中所有按钮的用途。</p>
-          </div>
-          <div>
-            <ControlPreview type="admin" />
-            <p>进入独立的管理登录页。登录后用于审核投稿、维护地点、分类、详情字段、表情和推荐排序。</p>
           </div>
         </div>
       </section>
