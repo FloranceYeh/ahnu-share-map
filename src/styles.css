@@ -3080,8 +3080,12 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 8px;
     padding: 7px 8px;
+    /* Keep the mobile menu readable over the map and avoid translucent overlap. */
+    background: var(--surface-solid);
     border: 1px solid var(--line);
     border-radius: 16px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .site-brand .brand-mark {
     width: 36px;
@@ -3094,12 +3098,17 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     font-size: 8px;
   }
   .main-navigation {
+    width: min(100%, 320px);
     right: 0;
+    left: auto;
     display: none;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 5px;
+    background: var(--surface-solid);
+    border: 1px solid var(--line);
     box-shadow: var(--shadow);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
   .site-header.is-open .main-navigation {
     display: grid;
@@ -3118,8 +3127,8 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   .mobile-navigation-actions button {
     min-height: 32px;
     color: #3a3a3c;
-    background: rgba(255, 255, 255, 0.62);
-    border: 0;
+    background: #f2f2f7;
+    border: 1px solid #e5e5ea;
     border-radius: 8px;
     font-size: 10px;
   }
@@ -3164,6 +3173,7 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   }
   .menu-trigger {
     display: grid;
+    flex: 0 0 38px;
   }
   .app-shell > .floating-tools {
     top: 82px;
@@ -3257,5 +3267,32 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     max-height: none;
     padding: 22px 18px;
     border-radius: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-header {
+    right: 8px;
+    left: 8px;
+    gap: 5px;
+  }
+  .site-brand {
+    gap: 7px;
+  }
+  .site-brand .brand-copy strong {
+    font-size: 14px;
+  }
+  .site-header .header-actions {
+    gap: 4px;
+  }
+  .site-header .utility-trigger {
+    padding: 0 6px;
+    font-size: 10px;
+  }
+  .main-navigation {
+    width: min(100%, 300px);
+  }
+  .main-navigation > a {
+    font-size: 10px;
   }
 }
