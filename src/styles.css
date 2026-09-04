@@ -789,12 +789,15 @@ button {
     align-items: center;
     padding: 0 12px;
     margin: -5px 0 14px;
-    color: #376047;
-    background: #e7efe6;
-    border: 1px solid #d7ded5;
-    border-radius: 3px;
+    color: var(--apple-blue);
+    background: rgba(0, 122, 255, 0.10);
+    border: 1px solid rgba(0, 122, 255, 0.16);
+    border-radius: 10px;
     font-size: 10px;
+    font-weight: 600;
+    transition: background-color .2s, transform .2s;
   }
+  .mobile-navigation-trigger:active { background: rgba(0, 122, 255, 0.18); transform: scale(.98); }
   .navigation-popover-backdrop {
     position: fixed;
     z-index: 1800;
@@ -807,11 +810,11 @@ button {
   .navigation-popover {
     position: relative;
     width: min(360px, 100%);
-    padding: 38px 16px 16px;
-    background: #fffdf8;
-    border: 1px solid #d6ded4;
-    border-radius: 6px;
-    box-shadow: 0 16px 40px rgba(33, 50, 40, 0.22);
+    padding: 42px 16px 16px;
+    background: rgba(250, 250, 252, .98);
+    border: 1px solid rgba(60, 60, 67, .14);
+    border-radius: 18px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .20);
   }
   .navigation-popover-close {
     position: absolute;
@@ -821,9 +824,9 @@ button {
     height: 28px;
     display: grid;
     place-items: center;
-    color: #52655a;
-    background: #e7eee5;
-    border: 0;
+    color: #3a3a3c;
+    background: rgba(118, 118, 128, .12);
+    border: 1px solid rgba(60, 60, 67, .10);
     border-radius: 50%;
     font-size: 19px;
     line-height: 1;
@@ -837,13 +840,16 @@ button {
     display: grid;
     min-height: 44px;
     place-items: center;
-    color: #376047;
-    background: #e7efe6;
-    border: 1px solid #d7ded5;
-    border-radius: 3px;
+    color: var(--apple-blue);
+    background: rgba(0, 122, 255, .10);
+    border: 1px solid rgba(0, 122, 255, .14);
+    border-radius: 12px;
     font-size: 12px;
+    font-weight: 600;
     text-decoration: none;
+    transition: background-color .2s, transform .2s;
   }
+  .navigation-popover-options a:active { background: rgba(0, 122, 255, .18); transform: scale(.98); }
   .brand-mark {
     width: 31px;
     height: 31px;
@@ -3121,12 +3127,15 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   }
   .mobile-navigation-actions button {
     min-height: 32px;
-    color: #3a3a3c;
-    background: #f2f2f7;
-    border: 1px solid #e5e5ea;
-    border-radius: 8px;
+    color: var(--apple-blue);
+    background: rgba(0, 122, 255, .08);
+    border: 1px solid rgba(0, 122, 255, .12);
+    border-radius: 9px;
     font-size: 10px;
+    font-weight: 600;
+    transition: background-color .2s, transform .2s;
   }
+  .mobile-navigation-actions button:active { background: rgba(0, 122, 255, .16); transform: scale(.98); }
   .site-header .author-trigger {
     display: none;
   }
@@ -3289,5 +3298,29 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   }
   .main-navigation > a {
     font-size: 10px;
+  }
+}
+
+/* Refined secondary dialogs */
+.author-close,
+.guide-confirm {
+  transition: background-color .2s, transform .2s;
+}
+.author-close:hover { background: rgba(118, 118, 128, .18); }
+.author-close:active,
+.guide-confirm:active { transform: scale(.97); }
+.guide-confirm { min-height: 42px; border-radius: 11px; font-weight: 600; }
+
+@media (max-width: 700px) {
+  .author-modal-backdrop,
+  .guide-modal-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+  .author-card,
+  .guide-card {
+    width: min(430px, 100%);
+    padding: 26px 20px 20px;
+    border-radius: 20px;
   }
 }
