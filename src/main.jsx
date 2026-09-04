@@ -571,7 +571,7 @@ function SiteHeader({
             {item.label}
           </a>
         ))}
-        {activePage === "map" && (
+        {(activePage === "map" || activePage === "detail") && (
           <div className="mobile-navigation-actions">
             <button type="button" onClick={onGuideOpen}>重看引导</button>
             <button type="button" onClick={onContactOpen}>联系作者</button>
@@ -665,10 +665,21 @@ function ControlPreview({ type }) {
   return <span className="control-close">×</span>;
 }
 
-function DetailPage({ onNavigate }) {
+function DetailPage({ onNavigate, onGuideOpen, onContactOpen }) {
   return (
     <main className="content-page">
-      <SiteHeader activePage="detail" onNavigate={onNavigate}>
+      <SiteHeader
+        activePage="detail"
+        onNavigate={onNavigate}
+        onGuideOpen={onGuideOpen}
+        onContactOpen={onContactOpen}
+      >
+        <button className="utility-trigger detail-action" onClick={onGuideOpen}>
+          重看引导
+        </button>
+        <button className="utility-trigger detail-action" onClick={onContactOpen}>
+          联系作者
+        </button>
         <a
           className="back-to-map"
           href="/"
@@ -1191,7 +1202,13 @@ function App() {
   }, [selected]);
 
   if (activePage === "detail")
-    return <DetailPage onNavigate={navigateToPage} />;
+    return (
+      <DetailPage
+        onNavigate={navigateToPage}
+        onGuideOpen={() => setGuideOpen(true)}
+        onContactOpen={() => setContactOpen(true)}
+      />
+    );
   if (activePage === "admin")
     return (
       <ManagementPage

@@ -3139,6 +3139,9 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   .site-header .author-trigger {
     display: none;
   }
+  .site-header .detail-action {
+    display: none;
+  }
   .site-header .utility-trigger {
     height: 38px;
     padding: 0 8px;
