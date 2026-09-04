@@ -17,6 +17,11 @@ body,
   margin: 0;
   min-width: 320px;
 }
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root { height: 100dvh; }
+}
 ::view-transition-old(root),
 ::view-transition-new(root) { animation-duration: .28s; }
 ::view-transition-new(root) { animation-name: pageViewIn; }
@@ -884,13 +889,13 @@ select {
     left: 12px;
     width: calc(100% - 24px);
   }
-  .map-stamp {
+.map-stamp {
     left: 12px;
-    bottom: 52px;
+    bottom: calc(52px + env(safe-area-inset-bottom, 0px));
   }
   .map-legend {
     right: 52px;
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   }
   .recommendation-drawer {
     top: auto;
@@ -2558,6 +2563,10 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   flex-shrink: 0;
   white-space: nowrap;
 }
+@supports (height: 100dvh) {
+  .app-shell,
+  .fullscreen-map { height: 100dvh; }
+}
 .app-shell > .site-header {
   position: fixed;
   inset-inline: 20px;
@@ -2695,6 +2704,7 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
 .detail-footer {
   width: min(1040px, calc(100% - 48px));
   margin: 0 auto;
+  padding-bottom: max(32px, env(safe-area-inset-bottom, 0px));
 }
 .detail-intro {
   min-height: 330px;
@@ -3381,6 +3391,10 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   transition: transform .42s cubic-bezier(.22,.8,.25,1);
   will-change: transform;
 }
+@supports (height: 100dvh) {
+  .page-track,
+  .page-panel { height: 100dvh; }
+}
 .page-panel {
   position: relative;
   width: 50%;
@@ -3388,7 +3402,11 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   height: 100vh;
 }
 .map-panel { overflow: hidden; }
-.detail-panel { overflow: auto; background: #f5f5f7; }
+.detail-panel {
+  overflow: auto;
+  background: #f5f5f7;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 .detail-panel .content-page { min-height: 100vh; }
 .app-shell.page-detail > .floating-tools,
 .app-shell.page-detail > .map-stamp,
