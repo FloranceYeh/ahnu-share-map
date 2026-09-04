@@ -665,32 +665,9 @@ function ControlPreview({ type }) {
   return <span className="control-close">×</span>;
 }
 
-function DetailPage({ onNavigate, onGuideOpen, onContactOpen }) {
+function DetailPage({ onNavigate }) {
   return (
     <main className="content-page">
-      <SiteHeader
-        activePage="detail"
-        onNavigate={onNavigate}
-        onGuideOpen={onGuideOpen}
-        onContactOpen={onContactOpen}
-      >
-        <button className="utility-trigger detail-action" onClick={onGuideOpen}>
-          重看引导
-        </button>
-        <button className="utility-trigger detail-action" onClick={onContactOpen}>
-          联系作者
-        </button>
-        <a
-          className="back-to-map"
-          href="/"
-          onClick={(event) => {
-            event.preventDefault();
-            onNavigate("map");
-          }}
-        >
-          返回地图
-        </a>
-      </SiteHeader>
       <section className="detail-intro">
         <div className="detail-title">
           <p className="section-kicker">MAP CONTROLS</p>
@@ -820,7 +797,7 @@ function DetailPage({ onNavigate, onGuideOpen, onContactOpen }) {
 
 function ManagementPage({ onNavigate, adminProps }) {
   return (
-    <main className="management-page">
+    <main className="management-page page-transition" key="admin">
       <SiteHeader activePage="admin" onNavigate={onNavigate}>
         <a
           className="back-to-map"
@@ -876,7 +853,16 @@ function App() {
   const [lightboxImage, setLightboxImage] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
   const [navigationMenuOpen, setNavigationMenuOpen] = useState(false);
+  const [navDirection, setNavDirection] = useState("");
   const navigateToPage = useCallback((page) => {
+    if (page === "detail") {
+      setDrawer(false);
+      setSelected(null);
+      setDraft(null);
+      setStatusPanel(false);
+      setAdminPanel(false);
+    }
+    setNavDirection(page === "detail" ? "right" : page === "map" ? "left" : "");
     const href = pageConfig.find((item) => item.id === page)?.href || "/";
     window.history.pushState(null, "", href);
     setActivePage(page);
@@ -1201,17 +1187,9 @@ function App() {
     ];
   }, [selected]);
 
-  if (activePage === "detail")
-    return (
-      <DetailPage
-        onNavigate={navigateToPage}
-        onGuideOpen={() => setGuideOpen(true)}
-        onContactOpen={() => setContactOpen(true)}
-      />
-    );
-  if (activePage === "admin")
-    return (
-      <ManagementPage
+  const pageOverlay = activePage === "admin" ? (
+      <div className="page-overlay">
+        <ManagementPage
         onNavigate={navigateToPage}
         adminProps={{
           adminAddEnabled,
@@ -1228,11 +1206,33 @@ function App() {
           },
           onDataChanged: refreshCatalog,
         }}
-      />
-    );
+        />
+      </div>
+    ) : null;
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell page-transition page-${activePage} nav-${navDirection}`}>
+      {pageOverlay}
+      <SiteHeader
+        activePage={activePage}
+        onNavigate={navigateToPage}
+        onGuideOpen={() => setGuideOpen(true)}
+        onContactOpen={() => setContactOpen(true)}
+      >
+        {activePage === "map" ? <>
+          {supabaseConfigured && <button className="utility-trigger" onClick={() => { setStatusPanel(true); setAdminPanel(false); setDraft(null); }}>查投稿</button>}
+          {((supabaseConfigured && appConfig.enablePublicSubmissions) || (!supabaseConfigured && appConfig.enableDebugAddPoint)) && (
+            <button className={`debug-trigger ${debugEnabled ? "active" : ""}`} onClick={() => { setDebugEnabled((value) => !value); setDraft(null); }}>＋<span>{debugEnabled ? "取消加点" : supabaseConfigured ? "投稿地点" : "调试录点"}</span></button>
+          )}
+          <button className="drawer-trigger" onClick={() => { setDrawer(true); setSelected(null); setDraft(null); }}><span className="trigger-icon">☷</span>推荐地点 <b>{filtered.length}</b></button>
+        </> : <>
+          <button className="utility-trigger" onClick={() => setGuideOpen(true)}>重看引导</button>
+          <button className="utility-trigger" onClick={() => setContactOpen(true)}>联系作者</button>
+          <a className="back-to-map" href="/" onClick={(event) => { event.preventDefault(); navigateToPage("map"); }}>返回地图</a>
+        </>}
+      </SiteHeader>
+      <div className="page-track" style={{ transform: `translateX(${activePage === "detail" ? "-50%" : "0%"})` }}>
+      <section className="page-panel map-panel">
       <div className="fullscreen-map">
         <AmapCanvas
           places={visiblePlaces}
@@ -1251,61 +1251,9 @@ function App() {
         />
         <div className="map-fallback" aria-hidden="true" />
       </div>
-      <SiteHeader
-        activePage="map"
-        onNavigate={navigateToPage}
-        onGuideOpen={() => setGuideOpen(true)}
-        onContactOpen={() => setContactOpen(true)}
-      >
-        <button className="author-trigger" onClick={() => setGuideOpen(true)}>
-          重看引导
-        </button>
-        <button className="author-trigger" onClick={() => setContactOpen(true)}>
-          联系作者
-        </button>
-        {supabaseConfigured && (
-          <button
-            className="utility-trigger"
-            onClick={() => {
-              setStatusPanel(true);
-              setAdminPanel(false);
-              setDraft(null);
-            }}
-          >
-            查投稿
-          </button>
-        )}
-        {((supabaseConfigured && appConfig.enablePublicSubmissions) ||
-          (!supabaseConfigured && appConfig.enableDebugAddPoint)) && (
-          <button
-            className={`debug-trigger ${debugEnabled ? "active" : ""}`}
-            onClick={() => {
-              setDebugEnabled((value) => !value);
-              setDraft(null);
-            }}
-          >
-            ＋
-            <span>
-              {debugEnabled
-                ? "取消加点"
-                : supabaseConfigured
-                  ? "投稿地点"
-                  : "调试录点"}
-            </span>
-          </button>
-        )}
-        <button
-          className="drawer-trigger"
-          onClick={() => {
-            setDrawer(true);
-            setSelected(null);
-            setDraft(null);
-          }}
-        >
-          <span className="trigger-icon">☷</span>推荐地点{" "}
-          <b>{filtered.length}</b>
-        </button>
-      </SiteHeader>
+      </section>
+      <section className="page-panel detail-panel"><DetailPage onNavigate={navigateToPage} /></section>
+      </div>
       <section className="floating-tools">
         <label className="search-box">
           <span>⌕</span>

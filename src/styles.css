@@ -17,12 +17,30 @@ body,
   margin: 0;
   min-width: 320px;
 }
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: .28s; }
+::view-transition-new(root) { animation-name: pageViewIn; }
+@keyframes pageViewIn { from { opacity: .7; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
+html { scrollbar-gutter: stable; }
 button,
 input {
   font: inherit;
 }
 button {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+a,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: none) and (pointer: coarse) {
+  button:focus,
+  a:focus {
+    outline: none;
+  }
 }
 .app-shell {
   position: relative;
@@ -2486,13 +2504,15 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
 /* Shared navigation and secondary pages */
 .site-header {
   position: fixed;
+  transform: translate3d(0, 0, 0) !important;
+  translate: 0 0;
   z-index: 1000;
   top: 18px;
   right: 20px;
   left: 20px;
   min-height: 58px;
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto minmax(360px, 1fr);
+  grid-template-columns: minmax(220px, 1fr) max-content minmax(360px, 1fr);
   align-items: center;
   gap: 18px;
   padding: 7px 8px;
@@ -2528,12 +2548,38 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   white-space: nowrap;
 }
 .main-navigation {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 3px;
   padding: 3px;
   background: rgba(118, 118, 128, 0.10);
   border-radius: 11px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.app-shell > .site-header {
+  position: fixed;
+  inset-inline: 20px;
+  width: auto;
+  left: 20px;
+  right: 20px;
+}
+@media (min-width: 701px) {
+  .app-shell > .site-header {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .app-shell > .site-header .main-navigation {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
+  }
+  .app-shell > .site-header .header-actions {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    bottom: 7px;
+  }
 }
 .main-navigation > a {
   min-width: 66px;
@@ -2561,7 +2607,8 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   display: none;
 }
 .site-header .header-actions {
-  min-width: 0;
+  min-width: max-content;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -2617,7 +2664,26 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   border: 0;
   border-radius: 10px;
   font-size: 18px;
+  transition: background-color .2s, transform .2s;
 }
+@media (min-width: 701px) {
+  .main-navigation::before { content:""; position:absolute; z-index:0; top:3px; bottom:3px; left:3px; width:66px; border-radius:9px; background:var(--apple-blue); box-shadow:0 3px 10px rgba(0,122,255,.20); transition:transform .28s cubic-bezier(.22,.8,.25,1); pointer-events:none; }
+  .main-navigation:has(> a:nth-child(2).active)::before { transform:translateX(69px); animation: focusSlideRight .28s cubic-bezier(.22,.8,.25,1) both; }
+  .main-navigation:has(> a:nth-child(1).active)::before { animation: focusSlideLeft .28s cubic-bezier(.22,.8,.25,1) both; }
+  .main-navigation > a { position:relative; z-index:1; }
+  .main-navigation > a.active { background:transparent; box-shadow:none; }
+  .app-shell.nav-left .main-navigation::before { animation: focusSlideLeft .28s cubic-bezier(.22,.8,.25,1) both; }
+}
+@keyframes focusSlideRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(69px); }
+}
+@keyframes focusSlideLeft {
+  from { transform: translateX(69px); }
+  to { transform: translateX(0); }
+}
+.menu-trigger:hover { background: rgba(118, 118, 128, .18); }
+.menu-trigger:active { transform: scale(.92); }
 .content-page,
 .management-page {
   min-height: 100vh;
@@ -3065,12 +3131,16 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
 }
 @media (max-width: 980px) {
   .site-header {
-    grid-template-columns: minmax(185px, 1fr) auto;
+    grid-template-columns: minmax(185px, 1fr) 1fr minmax(0, 1fr);
   }
   .main-navigation {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: center;
   }
   .app-shell > .floating-tools {
     top: 150px;
@@ -3101,9 +3171,13 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     font-size: 8px;
   }
   .main-navigation {
+    position: absolute;
+    top: calc(100% + 8px);
     width: min(100%, 320px);
     right: 0;
     left: auto;
+    grid-column: auto;
+    grid-row: auto;
     display: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 5px;
@@ -3113,6 +3187,20 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   }
   .site-header.is-open .main-navigation {
     display: grid;
+    animation: mobileMenuIn .2s ease both;
+  }
+  .site-header.is-open .main-navigation > a {
+    animation: menuItemSlideIn .22s cubic-bezier(.22, .8, .25, 1) both;
+  }
+  .site-header.is-open .main-navigation > a:nth-child(2) { animation-delay: .035s; }
+  .main-navigation > a:active { transform: scale(.97); }
+  @keyframes menuItemSlideIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes mobileMenuIn {
+    from { opacity: 0; transform: translateX(12px) scale(.98); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
   }
   .main-navigation > a {
     min-width: 0;
@@ -3276,6 +3364,78 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
     border-radius: 18px;
   }
 }
+.page-transition {
+  animation: none;
+}
+.page-overlay {
+  position: fixed;
+  z-index: 900;
+  inset: 0;
+  overflow: auto;
+  background: #f5f5f7;
+}
+.page-track {
+  width: 200%;
+  height: 100vh;
+  display: flex;
+  transition: transform .42s cubic-bezier(.22,.8,.25,1);
+  will-change: transform;
+}
+.page-panel {
+  position: relative;
+  width: 50%;
+  min-width: 50%;
+  height: 100vh;
+}
+.map-panel { overflow: hidden; }
+.detail-panel { overflow: auto; background: #f5f5f7; }
+.detail-panel .content-page { min-height: 100vh; }
+.app-shell.page-detail > .floating-tools,
+.app-shell.page-detail > .map-stamp,
+.app-shell.page-detail > .map-status-note,
+.app-shell.page-detail > .map-legend,
+.app-shell.page-detail > .debug-hint { visibility: hidden; pointer-events: none; }
+.app-shell.page-admin > .site-header { display: none; }
+@media (max-width: 700px) {
+  .page-track { transition-duration: .34s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-track { transition: none; }
+}
+.page-overlay .site-header .header-actions > * {
+  animation: overlayActionIn .24s cubic-bezier(.22, .8, .25, 1) both;
+}
+.page-overlay .site-header .header-actions > *:nth-child(2) { animation-delay: .03s; }
+.page-overlay .main-navigation:has(> a:nth-child(2).active)::before {
+  animation: focusSlideRight .32s cubic-bezier(.22, .8, .25, 1) both;
+}
+@keyframes overlayActionIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pageFadeIn {
+  from { opacity: .72; }
+  to { opacity: 1; }
+}
+.content-page > section,
+.management-page > .admin-stage,
+.app-shell > .fullscreen-map,
+.app-shell > .floating-tools,
+.app-shell > .map-stamp,
+.app-shell > .map-legend { animation: contentSlideIn .28s cubic-bezier(.22, .8, .25, 1) both; }
+@keyframes contentSlideIn {
+  from { opacity: .8; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-transition,
+  .content-page > section,
+  .management-page > .admin-stage,
+  .app-shell > .fullscreen-map,
+  .app-shell > .floating-tools,
+  .app-shell > .map-stamp,
+  .app-shell > .map-legend { animation: none; }
+}
 
 @media (max-width: 380px) {
   .site-header {
@@ -3291,6 +3451,7 @@ input[type="file"]::file-selector-button:hover { background: var(--apple-blue-da
   }
   .site-header .header-actions {
     gap: 4px;
+    height: 38px;
   }
   .site-header .utility-trigger {
     padding: 0 6px;
