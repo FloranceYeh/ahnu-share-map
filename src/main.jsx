@@ -834,7 +834,7 @@ function ManagementPage({ onNavigate, adminProps }) {
 function App() {
   const [activePage, setActivePage] = useState(getInitialPage);
   const [activeCampusId, setActiveCampusId] = useState(getInitialCampusId);
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCategories, setActiveCategories] = useState([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -1042,7 +1042,7 @@ function App() {
   }, [refreshCatalog]);
   const categoriesForUi = useMemo(
     () => [
-      { id: "all", label: appConfig.allCategoryLabel },
+      { id: "all", label: appConfig.allCategoryLabel, color: "#007aff" },
       ...catalogCategories,
     ],
     [catalogCategories],
@@ -1052,7 +1052,7 @@ function App() {
       catalogPlaces
         .filter((place) => {
           const matchesCategory =
-            activeCategory === "all" || place.category === activeCategory;
+            activeCategories.length === 0 || activeCategories.includes(place.category);
           const query = search.trim().toLowerCase();
           return (
             matchesCategory &&
@@ -1062,7 +1062,7 @@ function App() {
                 .includes(query))
           );
         }),
-    [activeCategory, search, catalogPlaces],
+    [activeCategories, search, catalogPlaces],
   );
   const filtered = useMemo(() => {
     const ranked = visiblePlaces.map((place, index) => ({
@@ -1263,12 +1263,29 @@ function App() {
             placeholder="搜店面或关键词"
           />
         </label>
-        <div className="category-row" role="tablist" aria-label="地点分类">
+        <div
+          className="category-row"
+          role="tablist"
+          aria-label="地点分类"
+          onWheel={(event) => {
+            const row = event.currentTarget;
+            if (row.scrollWidth <= row.clientWidth) return;
+            row.scrollLeft += event.deltaY;
+            event.preventDefault();
+          }}
+        >
           {categoriesForUi.map((category) => (
             <button
               key={category.id}
-              className={`category-chip ${activeCategory === category.id ? "active" : ""}`}
-              onClick={() => setActiveCategory(category.id)}
+              data-category={category.id}
+              className={`category-chip ${((category.id === "all" && activeCategories.length === 0) || activeCategories.includes(category.id)) ? "active" : ""}`}
+              style={{ "--category-color": category.color }}
+              onClick={() => setActiveCategories((current) => {
+                if (category.id === "all") return [];
+                return current.includes(category.id)
+                  ? current.filter((id) => id !== category.id)
+                  : [...current, category.id];
+              })}
             >
               {category.label}
             </button>
@@ -1290,14 +1307,6 @@ function App() {
         <small>点我切换至{nextCampus.name}</small>
       </button>
       {statusMessage && <div className="map-status-note">{statusMessage}</div>}
-      <div className="map-legend">
-        {catalogCategories.map((category) => (
-          <span key={category.id}>
-            <i className="legend-dot" style={{ background: category.color }} />
-            {category.label}
-          </span>
-        ))}
-      </div>
       {(debugEnabled || adminAddEnabled) && !draft && (
         <div className="debug-hint">点击地图放置新的推荐点</div>
       )}
