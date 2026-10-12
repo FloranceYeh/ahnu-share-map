@@ -12,8 +12,6 @@
 4. `public/logo.png`：站点 Logo（文件名由 `brand.yml` 的 `logo` 字段指定）。
 5. 部署配置：`.env.example` 列出了全部可配置项（后端端口、数据库与上传目录、初始管理员、投稿限额等）。
 
-本分支（`feat/nbut-white-label`）已配置为宁波工程学院部署示例：站名「宁工生活地图」（NBUT · LIFE MAP），口号「学长学姐分享」，校区为风华、翠柏、杭州湾，地图中心为风华校区。品牌只改动 `src/data/brand.yml`，`index.html` 的标题与分享卡片会在构建时自动生成；部署前请替换 `url` 与联系方式，并替换 `public/logo.png`。
-
 ## 本地运行
 
 本项目已改为**单容器自包含部署**：前端（Vite/React）与后端（Express + `node:sqlite`）在同一个进程中，不再依赖 Supabase 或 Turnstile。
@@ -29,6 +27,13 @@ npm run dev
 ```
 
 环境变量见 `.env.example`，其中 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 仅在数据库还没有管理员时用于初始化。
+
+如需配置管理员通知邮件的站点显示名，可参考以下 SMTP 示例：
+
+```bash
+SMTP_FROM=AHNU Share Map
+SITE_NAME=安师生活地图
+```
 
 ## 数据流
 
