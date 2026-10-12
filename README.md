@@ -23,7 +23,7 @@ npm run dev
 
 ## Supabase 初始化
 
-1. 按编号顺序执行 `supabase/migrations` 中的全部 SQL 迁移（当前为 `001`–`007`）。
+1. 执行 `supabase/migrations/00000000000000_initial_schema.sql`，完成数据库结构、策略和初始目录数据配置。
 2. 部署 Edge Function：`supabase functions deploy submit-place`。
 3. 配置 Turnstile Function secret：
 
