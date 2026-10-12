@@ -1,5 +1,5 @@
 # 地图与地点默认配置，管理员可以直接调整。
-- mapCenter: [121.6077043, 29.9138268]
+- mapCenter: [118.3697, 31.3378]
   mapZoom: 16
   mapMinZoom: 14
   mapMaxZoom: 20

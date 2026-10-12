@@ -1,10 +1,10 @@
 # 校区切换项。坐标遵循 app.yml 的 coordinateSystem 配置。
-- id: fenghua
-  name: 风华校区
-  coordinates: [121.6077043, 29.9138268]
-- id: cuibai
-  name: 翠柏校区
-  coordinates: [121.5269015, 29.8834026]
-- id: hangzhouwan
-  name: 杭州湾校区
-  coordinates: [121.2421487, 30.3248155]
+- id: zheshan
+  name: 赭山校区
+  coordinates: [118.3697, 31.3378]
+- id: huajin
+  name: 花津校区
+  coordinates: [118.373242, 31.287148]
+- id: tianmenshan
+  name: 天门山校区
+  coordinates: [118.399542, 31.441666]

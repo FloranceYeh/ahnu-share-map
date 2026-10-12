@@ -1,10 +1,39 @@
-import { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 
-// 本地部署不再依赖 Cloudflare Turnstile：直接放行一个占位 token。
-// 保留组件是为了不修改 SubmissionForm 的调用方式，也方便后续需要时再接回人机验证。
 export default function Turnstile({ onToken }) {
+  const ref = useRef(null);
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
   useEffect(() => {
-    onToken?.("local");
-  }, [onToken]);
-  return null;
+    if (!siteKey) {
+      onToken("development");
+      return undefined;
+    }
+    const render = () => {
+      if (window.turnstile && ref.current)
+        window.turnstile.render(ref.current, {
+          sitekey: siteKey,
+          callback: onToken,
+          "expired-callback": () => onToken(""),
+        });
+    };
+    const existing = document.querySelector("script[data-turnstile]");
+    if (existing) {
+      existing.addEventListener("load", render);
+      render();
+    } else {
+      const script = document.createElement("script");
+      script.src =
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.defer = true;
+      script.dataset.turnstile = "true";
+      script.onload = render;
+      document.head.appendChild(script);
+    }
+    return () => {
+      if (window.turnstile && ref.current)
+        window.turnstile.remove?.(ref.current);
+    };
+  }, [onToken, siteKey]);
+  return <div className="turnstile-box" ref={ref} />;
 }

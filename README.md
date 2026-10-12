@@ -2,41 +2,75 @@
 
 本项目采用 [GNU GPLv3](./LICENSE) 开源许可证。
 
-## 白标配置（White label）
+## 本地配置
 
-同一套代码可服务多所学校 / 组织。品牌信息集中在 `src/data/brand.yml`，切换学校只需改配置，无需改动业务代码。`index.html` 的标题与分享卡片（Open Graph / Twitter）由 Vite 在构建时根据 `brand.yml` 自动注入，无需手动修改。
-
-1. `src/data/brand.yml`（品牌唯一数据源）：站名、英文标语、机构名、口号、页面描述、分享描述、站点 URL、Logo 路径、引导标题、口碑标签、联系方式和 `storageKey`。`storageKey` 是浏览器本地存储前缀，默认沿用项目名 `ahnu-share-map`；若多个白标部署在同一个域名下，请改为不同值以避免互相覆盖。
-2. `src/data/campuses.yml`：校区名称与坐标（坐标遵循 `app.yml` 的 `coordinateSystem`）。
-3. `src/data/app.yml`：默认地图中心与缩放级别。
-4. `public/logo.png`：站点 Logo（文件名由 `brand.yml` 的 `logo` 字段指定）。
-5. 部署配置：`.env.example` 列出了全部可配置项（后端端口、数据库与上传目录、初始管理员、投稿限额等）。
-
-本分支（`feat/nbut-white-label`）已配置为宁波工程学院部署示例：站名「宁工生活地图」（NBUT · LIFE MAP），口号「学长学姐分享」，校区为风华、翠柏、杭州湾，地图中心为风华校区。品牌只改动 `src/data/brand.yml`，`index.html` 的标题与分享卡片会在构建时自动生成；部署前请替换 `url` 与联系方式，并替换 `public/logo.png`。
-
-## 本地运行
-
-本项目已改为**单容器自包含部署**：前端（Vite/React）与后端（Express + `node:sqlite`）在同一个进程中，不再依赖 Supabase 或 Turnstile。
+复制 `.env.example` 为 `.env`，填写高德、Supabase 和 Turnstile 的前端变量。
 
 ```bash
-# 需 Node 24+（内置 node:sqlite）
 npm install
-npm run build     # 构建前端到 dist/
-npm run server    # 启动后端，默认 http://127.0.0.1:3000
-
-# 开发热更：Vite 已把 /api 与 /uploads 代理到 :3000
 npm run dev
 ```
 
-环境变量见 `.env.example`，其中 `ADMIN_USERNAME` / `ADMIN_PASSWORD` 仅在数据库还没有管理员时用于初始化。
+## Supabase 初始化
+
+1. 按编号顺序执行 `supabase/migrations` 中的全部 SQL 迁移（当前为 `001`–`007`）。
+2. 部署 Edge Function：`supabase functions deploy submit-place`。
+3. 配置 Turnstile Function secret：
+
+```bash
+supabase secrets set TURNSTILE_SECRET_KEY=...
+```
+
+`SUPABASE_URL` 和 `SUPABASE_SERVICE_ROLE_KEY` 由 Supabase Edge Functions 运行环境自动提供，不应放入 Vercel 的前端环境变量。
+
+4. 在 Supabase Authentication 创建管理员邮箱密码账号，然后执行：
+
+```sql
+insert into public.admin_users(user_id, email)
+select id, email from auth.users where email = '你的管理员邮箱';
+```
+
+`admin_users` 支持多个管理员。每新增一个管理员账号，执行同一条 SQL 并替换邮箱即可。`email` 是可选的通知邮箱；管理员权限只由 `user_id` 判断。无需邮件通知的管理员可以执行：
+
+```sql
+insert into public.admin_users(user_id, email)
+select id, null from auth.users where email = '管理员登录邮箱';
+```
+
+管理员仍需使用 Supabase Authentication 中的邮箱密码账号登录。通知邮箱为 `NULL` 的管理员不会收到投稿邮件，也不会影响其他管理员正常收信。
+
+## 管理员邮件通知
+
+新投稿写入成功后，`submit-place` 会读取 `admin_users` 中所有有效的非空通知邮箱，并调用 Vercel 的 `/api/notify-admins` 通过 QQ 邮箱 SMTP 发送通知。邮件包含地点详情、自定义字段与投稿图片预览；图片来自私有存储，链接有效期为 7 天。没有有效收件人时会跳过邮件发送；通知失败也不会影响投稿写入。
+
+在 Vercel 项目环境变量中配置：
+
+```bash
+SMTP_PORT=465
+SMTP_USER=你的QQ邮箱
+SMTP_PASS=QQ邮箱SMTP授权码
+SMTP_FROM=AHNU Share Map
+ADMIN_NOTIFICATION_SECRET=随机长密钥
+```
+
+在 Supabase Edge Function secrets 中配置相同的通知密钥与 Vercel 端点地址：
+
+```bash
+supabase secrets set ADMIN_NOTIFICATION_URL=https://你的域名/api/notify-admins
+supabase secrets set ADMIN_NOTIFICATION_SECRET=与Vercel相同的随机长密钥
+```
+
+QQ 邮箱需要先在邮箱设置中开启 SMTP 服务，并使用 SMTP 授权码，而不是登录密码。修改后重新部署 Edge Function：
+
+```bash
+supabase functions deploy submit-place
+```
 
 ## 数据流
 
-- 匿名投稿经 `POST /api/submissions`（multipart）提交，通过每日限额后写入 `pending`；
-- 公共地图的 `GET /api/catalog` 只返回 `approved` 地点；
-- 管理员登录后可以编辑、通过或驳回投稿；
-- 投稿图片先落在 `data/uploads/pending/`，审核通过时迁移到 `data/uploads/public/`；
-- 地点的全部公开图片保存在 `places.image_urls`，`cover_url` 仅作为当前封面；
-- 分类和详情字段分别由 `categories`、`detail_fields` 表维护；项目不包含预置推荐地点（可用 `SEED_DEMO_PLACES=1` 写入演示数据）。
-
-后台数据使用 SQLite，默认位于 `data/app.db`，图片位于 `data/uploads/`。
+- 匿名投稿统一经过 `submit-place` Edge Function，通过 Turnstile 和每日 5 次限额后写入 `pending`。
+- 公共地图的 RLS 只允许读取 `approved` 地点。
+- 管理员登录后可以编辑、通过或驳回投稿。
+- 投稿图片先进入私有 `submission-images`，审核通过时迁移到公开 `place-images`。
+- 地点的全部公开图片保存在 `places.image_urls`，`cover_url` 仅作为当前封面。
+- 分类和详情字段分别由 `categories`、`detail_fields` 表维护；项目不包含预置推荐地点。

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { getSubmissionStatus } from "../lib/api";
+import { getSubmissionStatus } from "../lib/supabase";
 
 export default function SubmissionStatus({ onClose }) {
   const [code, setCode] = useState("");
